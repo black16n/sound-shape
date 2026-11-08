@@ -1,0 +1,237 @@
+{
+  "version": 1,
+  "source": "sound-shape/app.js SOUNDS",
+  "description": "内置声音库：颜色=类别，位置=声源，节奏=具体声音，文字=确认",
+  "colors": {
+    "voice": "#7FE9FF",
+    "env": "#FFB15C",
+    "nature": "#7BE495",
+    "danger": "#FF5A5A"
+  },
+  "catName": {
+    "voice": "人声",
+    "env": "环境声",
+    "nature": "自然声"
+  },
+  "regions": {
+    "door": [
+      0,
+      15
+    ],
+    "kitchen": [
+      16,
+      31
+    ],
+    "room": [
+      32,
+      47
+    ],
+    "window": [
+      48,
+      63
+    ],
+    "all": [
+      0,
+      63
+    ]
+  },
+  "regionName": {
+    "door": "门口",
+    "kitchen": "厨房",
+    "room": "室内",
+    "window": "窗外",
+    "all": "全屋"
+  },
+  "liveKeys": [
+    "speech",
+    "shout",
+    "doorbell",
+    "knock",
+    "boiling",
+    "phone",
+    "alarm",
+    "wind",
+    "rain",
+    "thunder",
+    "bird",
+    "horn",
+    "traffic"
+  ],
+  "segments": 64,
+  "sounds": [
+    {
+      "key": "speech",
+      "name": "说话",
+      "cat": "voice",
+      "icon": "🗣️",
+      "region": "all",
+      "mode": "sustain",
+      "desc": "连续、带音节起伏的谐波声，能量在中频"
+    },
+    {
+      "key": "shout",
+      "name": "喊叫",
+      "cat": "voice",
+      "icon": "📢",
+      "region": "all",
+      "mode": "sustain",
+      "desc": "突发、高能量、起始很快的人声"
+    },
+    {
+      "key": "laugh",
+      "name": "笑声",
+      "cat": "voice",
+      "icon": "😄",
+      "region": "all",
+      "mode": "pulse",
+      "rhythm": [
+        0,
+        140,
+        280,
+        420
+      ],
+      "desc": "一串短促爆发，约每秒 4–6 次"
+    },
+    {
+      "key": "cry",
+      "name": "哭声",
+      "cat": "voice",
+      "icon": "😢",
+      "region": "all",
+      "mode": "sustain",
+      "desc": "高基频、长持续、带颤音"
+    },
+    {
+      "key": "doorbell",
+      "name": "门铃",
+      "cat": "env",
+      "icon": "🔔",
+      "region": "door",
+      "mode": "pulse",
+      "rhythm": [
+        0,
+        430
+      ],
+      "desc": "两个稳定音高，\"叮—咚\"，音高几乎不抖"
+    },
+    {
+      "key": "knock",
+      "name": "敲门",
+      "cat": "env",
+      "icon": "✊",
+      "region": "door",
+      "mode": "pulse",
+      "rhythm": [
+        0,
+        160,
+        320
+      ],
+      "desc": "二到五下低频冲击，间隔 150–400ms"
+    },
+    {
+      "key": "boiling",
+      "name": "水开",
+      "cat": "env",
+      "icon": "💧",
+      "region": "kitchen",
+      "mode": "sustain",
+      "desc": "宽带嘶声，谱平坦度高，持续数十秒"
+    },
+    {
+      "key": "phone",
+      "name": "电话",
+      "cat": "env",
+      "icon": "📞",
+      "region": "room",
+      "mode": "pulse",
+      "rhythm": [
+        0,
+        600,
+        1200
+      ],
+      "desc": "稳定双音、规律重复的铃声"
+    },
+    {
+      "key": "alarm",
+      "name": "警报",
+      "cat": "env",
+      "icon": "🚨",
+      "region": "all",
+      "mode": "pulse",
+      "rhythm": [
+        0,
+        180,
+        360,
+        540
+      ],
+      "danger": true,
+      "desc": "约 3kHz 的严格周期脉冲，绝不可漏"
+    },
+    {
+      "key": "wind",
+      "name": "风声",
+      "cat": "nature",
+      "icon": "🍃",
+      "region": "window",
+      "mode": "sustain",
+      "desc": "能量集中在低频，缓慢起伏，几乎没有起始"
+    },
+    {
+      "key": "rain",
+      "name": "雨声",
+      "cat": "nature",
+      "icon": "🌧️",
+      "region": "window",
+      "mode": "sustain",
+      "desc": "宽带、高频丰富、细密连续的沙沙声"
+    },
+    {
+      "key": "thunder",
+      "name": "雷声",
+      "cat": "nature",
+      "icon": "⚡",
+      "region": "window",
+      "mode": "pulse",
+      "rhythm": [
+        0
+      ],
+      "danger": true,
+      "desc": "极强低频冲击，衰减很长"
+    },
+    {
+      "key": "bird",
+      "name": "鸟鸣",
+      "cat": "nature",
+      "icon": "🐦",
+      "region": "window",
+      "mode": "pulse",
+      "rhythm": [
+        0,
+        120,
+        240
+      ],
+      "desc": "高频、快速扫频的短促音节"
+    },
+    {
+      "key": "horn",
+      "name": "车笛",
+      "cat": "nature",
+      "icon": "🚗",
+      "region": "window",
+      "mode": "pulse",
+      "rhythm": [
+        0
+      ],
+      "desc": "350–600Hz 稳定音高，0.2–1.5 秒"
+    },
+    {
+      "key": "traffic",
+      "name": "车流",
+      "cat": "nature",
+      "icon": "🛣️",
+      "region": "window",
+      "mode": "sustain",
+      "desc": "低频为主、缓慢变化的持续噪声"
+    }
+  ]
+}

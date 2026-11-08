@@ -1,0 +1,2724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>声音的形状 · 声纹可视化平台</title>
+<style>
+/* ========== 主题变量：深色（黑） / 浅色（白） ========== */
+:root{
+  --bg:#0f0f1a;
+  --panel:rgba(255,255,255,.038);
+  --panel-2:rgba(255,255,255,.022);
+  --line:rgba(255,255,255,.10);
+  --line-soft:rgba(255,255,255,.06);
+  --ink:#F5F8FF;
+  --ink-2:#CCD4E4;
+  --muted:#98A2BA;
+  --mint:#5FE9B4;
+  --mint-light:#B6FFE2;
+  --mint-deep:#22BE92;
+  --grad:linear-gradient(120deg,#B6FFE2 0%,#5FE9B4 45%,#22BE92 100%);
+  --grad-soft:linear-gradient(120deg,rgba(182,255,226,.16),rgba(34,190,146,.10));
+  --halo-rgb:95,233,180;
+  --grid:rgba(255,255,255,.016);
+  --stage-bg:radial-gradient(80% 90% at 50% 66%,rgba(var(--halo-rgb),.09),transparent 70%),rgba(255,255,255,.012);
+  --wave-1:#5FE9B4;
+  --wave-2:#B6FFE2;
+  --wave-3:#FFFFFF;
+  --warn:#FFC46B;
+  --shadow:0 26px 70px rgba(0,0,0,.42);
+}
+body[data-theme="light"]{
+  --bg:#EFF6F2;
+  --panel:rgba(255,255,255,.78);
+  --panel-2:rgba(255,255,255,.55);
+  --line:rgba(10,70,52,.14);
+  --line-soft:rgba(10,70,52,.08);
+  --ink:#0B231B;
+  --ink-2:#25493C;
+  --muted:#4E6E61;
+  --mint:#0C9C71;
+  --mint-light:#087A58;
+  --mint-deep:#066A4C;
+  --grad:linear-gradient(120deg,#0D8F68 0%,#0A9C70 48%,#06704F 100%);
+  --grad-soft:linear-gradient(120deg,rgba(10,150,110,.12),rgba(6,112,79,.06));
+  --halo-rgb:10,156,112;
+  --grid:rgba(10,70,52,.045);
+  --stage-bg:radial-gradient(80% 90% at 50% 66%,rgba(var(--halo-rgb),.13),transparent 70%),rgba(255,255,255,.55);
+  --wave-1:#0B9E72;
+  --wave-2:#0A7757;
+  --wave-3:#134436;
+  --warn:#A85B06;
+  --shadow:0 26px 70px rgba(12,60,44,.14);
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Segoe UI",sans-serif;
+  overflow:hidden;-webkit-font-smoothing:antialiased;
+}
+/* 过渡只在用户主动切换配色后启用，避免首帧串色 */
+body.ready{transition:background .45s ease,color .45s ease}
+body.ready::before{transition:background .45s ease}
+body.ready .panel{transition:background .45s ease,border-color .45s ease}
+body.ready .stage{transition:background .45s ease}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(900px 520px at 10% -10%,rgba(var(--halo-rgb),.15),transparent 65%),
+    radial-gradient(900px 620px at 96% 110%,rgba(var(--halo-rgb),.10),transparent 62%),
+    linear-gradient(var(--grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:auto,auto,48px 48px,48px 48px;
+}
+button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:8px}
+b,strong{font-weight:700}
+.num{font-variant-numeric:tabular-nums}
+
+/* ========== 骨架：适配 1920x1080 一屏 ========== */
+.app{
+  position:relative;z-index:1;height:100vh;min-height:0;
+  padding:20px 36px 24px;display:grid;gap:16px;
+  grid-template-rows:42px auto minmax(0,1fr) 168px;
+}
+.panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+
+/* ========== 顶栏 ========== */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:17px;letter-spacing:.02em}
+.brand-mark{position:relative;width:24px;height:24px;flex:none}
+.brand-mark::before{content:"";position:absolute;inset:0;border-radius:50%;background:var(--grad);box-shadow:0 0 18px rgba(var(--halo-rgb),.6);animation:breathe 2.8s ease-in-out infinite}
+.brand-mark::after{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--bg)}
+.brand-sep{width:1px;height:16px;background:var(--line)}
+.brand-sub{font-size:11px;letter-spacing:.18em;color:var(--muted);font-weight:600}
+.top-right{display:flex;align-items:center;gap:22px;font-size:12.5px;color:var(--ink-2)}
+.top-stat b{color:var(--ink);font-size:14px}
+.live{display:flex;align-items:center;gap:8px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint);animation:breathe 2.8s ease-in-out infinite}
+.clock{font-size:15px;font-weight:600;letter-spacing:.06em;color:var(--ink)}
+
+/* 黑白变色按钮 */
+.theme-switch{display:flex;align-items:center;gap:4px;padding:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:99px}
+.theme-switch .ts-label{font-size:11px;color:var(--muted);padding:0 6px 0 8px;letter-spacing:.08em}
+.ts-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;font-size:12px;font-weight:600;color:var(--muted);transition:.25s}
+.ts-btn .swatch{width:11px;height:11px;border-radius:50%;border:1px solid var(--line)}
+.ts-btn[data-mode="dark"] .swatch{background:#0f0f1a}
+.ts-btn[data-mode="light"] .swatch{background:#FFFFFF;border-color:rgba(0,0,0,.16)}
+.ts-btn[aria-pressed="true"]{background:var(--grad-soft);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(var(--halo-rgb),.55)}
+body[data-theme="light"] .ts-btn[aria-pressed="true"]{background:#0B231B;color:#EAFBF3}
+
+/* ========== 首屏 / 概念区 ========== */
+.hero{display:flex;align-items:center;justify-content:space-between;gap:40px;min-height:0}
+.eyebrow{font-size:11px;letter-spacing:.32em;color:var(--mint);font-weight:700;margin:0 0 8px}
+h1{font-size:clamp(40px,3.9vw,68px);line-height:1.02;margin:0;letter-spacing:.02em;font-weight:800}
+h1 .grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 26px rgba(var(--halo-rgb),.35))}
+.hero-sub{margin:8px 0 0;font-size:14px;letter-spacing:.24em;color:var(--ink-2);font-weight:600}
+.hero-lead{margin:14px 0 0;font-size:clamp(16px,1.25vw,21px);color:var(--ink);font-weight:500}
+.hero-lead span{color:var(--mint)}
+.hero-actions{display:flex;align-items:center;gap:16px;margin-top:16px}
+.hint{font-size:12px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:99px;font-weight:700;font-size:13.5px;padding:11px 20px;transition:transform .18s,box-shadow .25s,background .25s}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(0)}
+.btn-ghost{border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+.btn-ghost:hover{box-shadow:0 0 22px rgba(var(--halo-rgb),.24)}
+.btn-primary{background:var(--grad);color:#062018;box-shadow:0 8px 30px rgba(var(--halo-rgb),.32)}
+body[data-theme="light"] .btn-primary{color:#FFFFFF}
+.btn-primary:hover{box-shadow:0 12px 40px rgba(var(--halo-rgb),.55)}
+kbd{font-family:inherit;font-size:10.5px;padding:2px 7px;border-radius:5px;background:rgba(0,0,0,.16);border:1px solid rgba(0,0,0,.12);letter-spacing:.04em}
+body[data-theme="light"] kbd{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.28)}
+
+/* 声波 → 光效 */
+.hero-visual{width:min(38vw,540px);flex:none;position:relative}
+.hero-visual svg{width:100%;height:auto;display:block;overflow:visible}
+.v-label{font-size:11px;letter-spacing:.16em;fill:var(--muted);font-weight:600}
+.sbar{transform-box:fill-box;transform-origin:center;animation:barPulse 1.7s ease-in-out infinite}
+.sring{transform-box:fill-box;transform-origin:center;animation:ringOut 3s linear infinite;opacity:0}
+.spark{animation:sparkRun 2.4s ease-in-out infinite}
+.arrow-line{stroke-dasharray:5 9;animation:dashFlow 1.2s linear infinite}
+.core-dot{filter:drop-shadow(0 0 12px rgba(var(--halo-rgb),.95));animation:breathe 2.8s ease-in-out infinite}
+
+/* ========== 主区：声纹库 + 识别演示 ========== */
+.main{display:grid;grid-template-columns:minmax(320px,370px) minmax(0,1fr);gap:16px;min-height:0}
+.panel-head{display:flex;align-items:center;gap:10px;height:36px;flex:none}
+.panel-title{font-size:15px;font-weight:700;letter-spacing:.04em;margin:0}
+.panel-tag{font-size:11px;color:var(--muted);letter-spacing:.06em}
+.mini-btn{margin-left:auto;font-size:11.5px;color:var(--mint);border:1px solid rgba(var(--halo-rgb),.35);border-radius:99px;padding:5px 11px;background:var(--grad-soft);transition:.2s;font-weight:600}
+.mini-btn:hover{box-shadow:0 0 18px rgba(var(--halo-rgb),.3)}
+
+/* 声纹库 */
+.lib{display:flex;flex-direction:column;gap:12px;padding:16px 16px 14px;min-height:0}
+.cards{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:auto;padding-right:2px}
+.cards::-webkit-scrollbar{width:4px}
+.cards::-webkit-scrollbar-thumb{background:rgba(var(--halo-rgb),.4);border-radius:9px}
+.card{
+  position:relative;display:flex;align-items:center;gap:13px;width:100%;text-align:left;
+  padding:11px 13px;border-radius:13px;border:1px solid var(--line-soft);
+  background:var(--panel-2);transition:.22s;min-height:78px;
+}
+.card:hover{border-color:rgba(var(--halo-rgb),.42);transform:translateX(3px)}
+.card[aria-pressed="true"]{border-color:rgba(var(--halo-rgb),.7);background:var(--grad-soft);box-shadow:0 0 24px rgba(var(--halo-rgb),.14),inset 3px 0 0 var(--mint)}
+.card-icon{width:40px;height:40px;flex:none;border-radius:11px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:2px;background:var(--panel)}
+.card-icon i{display:block;width:3px;border-radius:3px;background:var(--mint);opacity:.85}
+.card[aria-pressed="true"] .card-icon{border-color:rgba(var(--halo-rgb),.55);box-shadow:0 0 14px rgba(var(--halo-rgb),.2)}
+.card-main{display:flex;flex-direction:column;gap:5px;min-width:0}
+.card-name{font-size:15px;font-weight:700;letter-spacing:.02em}
+.card-meta{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.card-flag{margin-left:auto;flex:none;font-size:10.5px;font-weight:700;color:var(--mint);letter-spacing:.08em;opacity:0;transition:.2s}
+.card[aria-pressed="true"] .card-flag{opacity:1}
+.custom-badge{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin-left:7px;vertical-align:2px;font-weight:600}
+
+/* 库概览 + 硬件镜像 OLED */
+.lib-stats{display:flex;gap:8px;flex:none;margin-top:auto}
+.lib-stat{flex:1;padding:9px 11px;border-radius:11px;background:var(--panel-2);border:1px solid var(--line-soft);display:flex;flex-direction:column;gap:3px}
+.lib-stat b{font-size:17px;color:var(--mint);font-weight:700;line-height:1.1}
+.lib-stat span{font-size:10.5px;color:var(--muted);letter-spacing:.04em}
+.hw{display:flex;align-items:center;gap:14px;padding:11px 12px;border-radius:13px;border:1px dashed var(--line);background:var(--panel-2);flex:none}
+.oled{position:relative;width:104px;height:60px;flex:none;border-radius:8px;background:#05090A;border:2px solid #1B2A28;box-shadow:inset 0 0 18px rgba(0,0,0,.9),0 0 0 3px rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;gap:10px;overflow:hidden}
+.oled::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px);pointer-events:none}
+.oled-text{font-size:22px;font-weight:700;color:#8BFFD2;text-shadow:0 0 12px rgba(95,233,180,.9);letter-spacing:.05em;max-width:56px;overflow:hidden;white-space:nowrap}
+.oled-bars{display:flex;align-items:center;gap:2px;height:26px}
+.oled-bars i{width:3px;height:6px;border-radius:2px;background:#5FE9B4;box-shadow:0 0 6px #5FE9B4;animation:barPulse 1.6s ease-in-out infinite}
+.oled.hit{animation:oledHit .8s ease-out}
+.hw-meta{font-size:11.5px;line-height:1.7;color:var(--ink-2)}
+.hw-meta b{display:block;font-size:12.5px;color:var(--ink)}
+.hw-meta span{color:var(--muted)}
+
+/* 识别演示 */
+.demo{display:flex;flex-direction:column;padding:16px 18px 14px;min-height:0;position:relative;overflow:hidden}
+.demo.hit-flash{animation:panelFlash .9s ease-out}
+.demo-tools{display:flex;align-items:center;gap:14px;margin-left:auto}
+.switch{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);cursor:pointer;user-select:none}
+.switch input{position:absolute;opacity:0;pointer-events:none}
+.track{width:34px;height:19px;border-radius:99px;background:var(--line);border:1px solid var(--line);position:relative;transition:.25s}
+.track::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--muted);transition:.25s}
+.switch input:checked + .track{background:var(--grad);border-color:transparent}
+.switch input:checked + .track::after{left:17px;background:#062018;box-shadow:0 0 8px rgba(0,0,0,.25)}
+body[data-theme="light"] .switch input:checked + .track::after{background:#fff}
+.switch input:focus-visible + .track{outline:2px solid var(--mint);outline-offset:3px}
+.fps{font-size:11px;color:var(--muted);letter-spacing:.06em}
+
+.stage{position:relative;flex:1;min-height:0;margin:10px 0 12px;border-radius:15px;overflow:hidden;border:1px solid var(--line-soft);background:var(--stage-bg)}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage-overlay{position:absolute;top:6%;left:0;right:0;text-align:center;pointer-events:none}
+.status-char{
+  font-size:clamp(52px,5.4vw,96px);font-weight:800;line-height:1.05;letter-spacing:.06em;
+  color:var(--ink);transition:color .25s;
+}
+.stage.idle .status-char{color:var(--mint);text-shadow:0 0 34px rgba(var(--halo-rgb),.55);animation:breathe 2.8s ease-in-out infinite;transform-origin:center}
+.stage.listening .status-char{color:var(--mint-light);text-shadow:0 0 26px rgba(var(--halo-rgb),.6);animation:listenPulse .7s ease-in-out infinite}
+.stage.hit .status-char{color:var(--mint);text-shadow:0 0 46px rgba(var(--halo-rgb),.9);animation:hitPop .8s cubic-bezier(.2,1.4,.4,1)}
+.status-label{margin-top:8px;font-size:13px;letter-spacing:.12em;color:var(--ink-2);font-weight:600}
+.stage.hit .status-label{color:var(--mint)}
+.meter{position:absolute;left:18px;bottom:16px;display:flex;align-items:center;gap:10px;font-size:11px;color:var(--muted);letter-spacing:.06em;pointer-events:none}
+.meter-track{width:120px;height:5px;border-radius:99px;background:var(--line);overflow:hidden}
+.meter-fill{height:100%;width:8%;border-radius:99px;background:var(--grad);box-shadow:0 0 12px rgba(var(--halo-rgb),.6)}
+.sync{position:absolute;right:18px;bottom:16px;display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);letter-spacing:.06em;pointer-events:none}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 9px var(--mint);animation:breathe 2.8s ease-in-out infinite}
+.demo-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none}
+.now{font-size:12.5px;color:var(--muted);letter-spacing:.04em}
+.now b{font-size:17px;color:var(--ink);margin-left:8px}
+.now .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--mint);margin-right:8px;vertical-align:3px;box-shadow:0 0 8px var(--mint)}
+
+/* ========== 识别历史 ========== */
+.history{padding:14px 18px 16px;display:flex;flex-direction:column;gap:12px;min-height:0}
+.history-head{display:flex;align-items:baseline;gap:12px;flex:none}
+.history-head .panel-tag{margin-left:auto}
+.timeline{display:flex;align-items:stretch;gap:10px;overflow:hidden;flex:1;min-height:0;padding-top:2px}
+.chip{
+  flex:0 0 auto;min-width:168px;max-width:210px;padding:12px 14px;border-radius:12px;
+  border:1px solid var(--line-soft);background:var(--panel-2);
+  display:flex;flex-direction:column;gap:7px;position:relative;
+}
+.chip:first-child{border-color:rgba(var(--halo-rgb),.55);background:var(--grad-soft);box-shadow:0 0 22px rgba(var(--halo-rgb),.12);animation:chipIn .45s ease-out}
+.chip-top{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);letter-spacing:.06em}
+.chip-dot{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint)}
+.chip-name{font-size:16px;font-weight:700;letter-spacing:.02em;color:var(--ink)}
+.chip-bottom{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted)}
+.chip-conf{color:var(--mint);font-weight:700}
+.chip::after{content:"";position:absolute;left:14px;bottom:-13px;width:1px;height:13px;background:var(--line)}
+
+/* ========== 全屏闪烁反馈 ========== */
+.flash{position:fixed;inset:0;z-index:60;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 62% 52%,rgba(var(--halo-rgb),.45),transparent 62%);}
+.flash.on{animation:flashOut .9s ease-out}
+.flash-edge{position:fixed;inset:0;z-index:59;pointer-events:none;opacity:0;box-shadow:inset 0 0 130px rgba(var(--halo-rgb),.55)}
+.flash-edge.on{animation:flashOut .9s ease-out}
+
+/* ========== 训练引导弹窗 ========== */
+.modal[hidden]{display:none}
+.modal{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:24px}
+.modal-backdrop{position:absolute;inset:0;background:rgba(4,8,10,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.modal-panel{
+  position:relative;width:min(880px,92vw);border-radius:22px;padding:30px 34px 32px;
+  background:var(--bg);border:1px solid rgba(var(--halo-rgb),.35);box-shadow:var(--shadow),0 0 60px rgba(var(--halo-rgb),.15);
+  animation:modalIn .3s cubic-bezier(.2,.9,.3,1) both;
+}
+body[data-theme="light"] .modal-panel{background:#FFFFFF}
+.modal-close{position:absolute;right:20px;top:18px;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);color:var(--muted);font-size:18px;line-height:1}
+.modal-close:hover{color:var(--ink);border-color:var(--mint)}
+.modal-eyebrow{font-size:11px;letter-spacing:.28em;color:var(--mint);font-weight:700;margin:0 0 8px}
+.modal-panel h2{margin:0;font-size:27px;letter-spacing:.02em}
+.modal-panel .desc{margin:9px 0 26px;color:var(--ink-2);font-size:14px;line-height:1.7}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;position:relative}
+.steps::before{content:"";position:absolute;left:11%;right:11%;top:27px;height:1px;background:linear-gradient(90deg,rgba(var(--halo-rgb),.15),rgba(var(--halo-rgb),.7),rgba(var(--halo-rgb),.15))}
+.step{position:relative;text-align:center;padding:0 6px}
+.step-num{
+  position:relative;z-index:1;width:54px;height:54px;margin:0 auto 16px;border-radius:50%;
+  display:grid;place-items:center;font-size:19px;font-weight:800;color:#062018;
+  background:var(--grad);box-shadow:0 0 26px rgba(var(--halo-rgb),.4);
+}
+body[data-theme="light"] .step-num{color:#fff}
+.step h3{margin:0 0 7px;font-size:15px}
+.step p{margin:0;font-size:12px;line-height:1.65;color:var(--muted)}
+.step .key{display:inline-block;margin-top:9px;font-size:11px;color:var(--mint);border:1px solid rgba(var(--halo-rgb),.4);border-radius:99px;padding:3px 10px;background:var(--grad-soft)}
+.modal-note{margin-top:26px;padding:13px 16px;border-radius:12px;border:1px dashed var(--line);background:var(--panel-2);font-size:12.5px;color:var(--ink-2);line-height:1.7}
+.modal-note b{color:var(--mint)}
+
+/* ========== 麦克风模式 / 训练工作台 ========== */
+.mode-switch{display:flex;align-items:center;gap:2px;padding:3px;background:var(--panel-2);border:1px solid var(--line);border-radius:99px}
+.mode-btn{padding:5px 12px;border-radius:99px;font-size:11.5px;font-weight:600;color:var(--muted);transition:.2s;white-space:nowrap}
+.mode-btn[aria-pressed="true"]{background:var(--grad-soft);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(var(--halo-rgb),.55)}
+body[data-theme="light"] .mode-btn[aria-pressed="true"]{background:#0B231B;color:#EAFBF3}
+.mdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:1px}
+.mode-btn[aria-pressed="true"] .mdot{background:var(--mint);box-shadow:0 0 8px var(--mint)}
+.switch.disabled{opacity:.4;pointer-events:none}
+.stage.unknown .status-char{color:var(--warn);text-shadow:0 0 40px rgba(255,196,107,.45);animation:hitPop .7s ease-out}
+.stage.unknown .status-label{color:var(--warn)}
+.mic-badge{position:absolute;left:18px;top:16px;display:none;align-items:center;gap:7px;font-size:11px;letter-spacing:.1em;color:var(--mint);font-weight:700;pointer-events:none}
+.stage.mic-on .mic-badge{display:flex}
+.mic-badge i{width:7px;height:7px;border-radius:50%;background:#FF5D5D;box-shadow:0 0 9px #FF5D5D;animation:breathe 1.4s ease-in-out infinite}
+.mic-note{position:absolute;right:18px;top:16px;max-width:32%;text-align:right;font-size:11px;line-height:1.6;color:var(--muted);pointer-events:none}
+.be-badge{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:var(--panel-2);font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;transition:.2s}
+.be-badge:hover{border-color:rgba(var(--halo-rgb),.55)}
+.be-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex:none}
+.be-badge.online{color:var(--ink);border-color:rgba(var(--halo-rgb),.5)}
+.be-badge.online .be-dot{background:var(--mint);box-shadow:0 0 8px var(--mint);animation:breathe 2.8s ease-in-out infinite}
+.be-badge.off{opacity:.6}
+.train-engine{margin-top:11px;padding:9px 11px;border-radius:9px;border:1px dashed var(--line);font-size:11px;line-height:1.6;color:var(--muted)}
+.train-engine b{color:var(--mint)}
+.teach-btn{position:absolute;left:50%;bottom:48px;transform:translateX(-50%);z-index:5;padding:9px 18px;border-radius:99px;font-size:12.5px;font-weight:700;color:#1A1204;background:var(--warn);box-shadow:0 6px 24px rgba(255,196,107,.35);transition:.2s}
+.teach-btn:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 10px 30px rgba(255,196,107,.55)}
+/* 麦克风诊断面板 */
+.mic-diag{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100;width:min(530px,88%);max-height:88%;overflow:auto;pointer-events:auto;padding:18px 20px 16px;border-radius:16px;border:1px solid rgba(var(--halo-rgb),.5);background:var(--bg);box-shadow:var(--shadow),0 0 50px rgba(var(--halo-rgb),.16);text-align:left}
+body[data-theme="light"] .mic-diag{background:#FFFFFF}
+.diag-head{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.diag-icon{width:22px;height:22px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#1A1204;background:var(--warn)}
+.diag-head b{font-size:15px;letter-spacing:.02em}
+.diag-close{margin-left:auto;color:var(--muted);font-size:19px;line-height:1;padding:0 4px}
+.diag-reason{margin:0 0 10px;font-size:12.5px;line-height:1.7;color:var(--ink-2)}
+.diag-env{margin:0 0 12px;padding:8px 10px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line-soft);font-size:11px;line-height:1.65;color:var(--muted);word-break:break-all}
+.diag-env b{color:var(--mint)}
+.diag-local{margin:0 0 12px;padding:10px 11px;border-radius:9px;border:1px solid rgba(var(--halo-rgb),.42);background:var(--grad-soft);font-size:11.5px;line-height:1.75;color:var(--ink-2)}
+.diag-local b{color:var(--mint)}
+.diag-local code{padding:1px 5px;border-radius:4px;background:var(--panel-2);border:1px solid var(--line-soft);font-size:11px}
+.diag-local a{color:var(--mint);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.diag-field{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.diag-field label{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.diag-field select{width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font-size:12px;font-family:inherit}
+.diag-steps{margin:0 0 13px;padding-left:18px;font-size:11.5px;line-height:1.8;color:var(--ink-2)}
+.diag-steps li::marker{color:var(--mint)}
+.diag-actions{display:flex;gap:8px;flex-wrap:wrap}
+.link-btn{pointer-events:auto;color:var(--mint);font-size:11px;font-weight:700;text-decoration:underline;text-underline-offset:2px;padding:0 2px}
+.mic-note .link-btn{margin-left:4px}
+.foot-actions{display:flex;align-items:center;gap:10px}
+.btn-sm{padding:9px 16px;font-size:12.5px}
+.btn[disabled]{opacity:.42;pointer-events:none}
+.trained-badge{font-size:10px;color:var(--mint);border:1px solid rgba(var(--halo-rgb),.5);border-radius:5px;padding:1px 5px;margin-left:7px;vertical-align:2px;font-weight:700}
+.chip.unknown .chip-dot{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+.chip.unknown .chip-name{color:var(--warn)}
+.chip.unknown .chip-conf{color:var(--warn)}
+
+/* 训练工作台 */
+.train-panel{width:min(1020px,94vw);max-height:90vh;overflow:auto}
+.train-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+.train-col{padding:17px;border-radius:15px;border:1px solid var(--line-soft);background:var(--panel-2)}
+.train-col h3{margin:0 0 4px;font-size:14px;letter-spacing:.02em}
+.train-col .sub{margin:0 0 13px;font-size:11.5px;color:var(--muted);line-height:1.65}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:11px}
+.field label{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.field-hint{margin-left:7px;color:var(--mint);font-size:10.5px;font-weight:600;letter-spacing:0}
+.field select,.field input[type=text]{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:13px;font-family:inherit}
+.train-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.samples{display:flex;flex-wrap:wrap;gap:8px;min-height:54px;margin:12px 0;padding:10px;border:1px dashed var(--line);border-radius:11px;align-items:center}
+.sample{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:9px;background:var(--panel);border:1px solid var(--line-soft);font-size:11px}
+.sample .sname{font-weight:700;color:var(--ink)}
+.sample .sbars{display:flex;gap:2px;align-items:center;height:20px}
+.sample .sbars i{width:2px;background:var(--mint);border-radius:2px;opacity:.85}
+.sample .sdel{color:var(--muted);font-size:15px;line-height:1;padding:0 2px}
+.sample .sdel:hover{color:var(--warn)}
+.train-status{margin-top:12px;padding:11px 13px;border-radius:10px;background:var(--grad-soft);border:1px solid rgba(var(--halo-rgb),.3);font-size:12px;line-height:1.7;color:var(--ink-2)}
+.feat-row{display:flex;align-items:center;gap:9px;margin:6px 0;font-size:11px;color:var(--muted)}
+.feat-row span:first-child{width:58px;flex:none}
+.feat-track{flex:1;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.feat-fill{height:100%;width:0;background:var(--grad);border-radius:99px;transition:width .35s}
+.feat-row .fval{width:38px;text-align:right;font-variant-numeric:tabular-nums}
+.rec-on{animation:recPulse 1.1s ease-in-out infinite}
+.train-foot{margin-top:18px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,18px);z-index:120;padding:12px 22px;border-radius:99px;background:var(--ink);color:var(--bg);font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.3s;box-shadow:var(--shadow);max-width:82vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ========== 合并自 sound-shape：灯带 / 声音库 / 调试 ========== */
+.strip-row{position:relative;height:26px;flex:none;margin:0 0 10px;border:1px solid var(--line-soft);border-radius:8px;overflow:hidden;background:var(--panel-2)}
+.strip-row canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.strip-regions{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);pointer-events:none}
+.strip-regions span{display:grid;place-items:center;font-size:9.5px;letter-spacing:.14em;color:var(--ink-2);text-shadow:0 1px 4px rgba(0,0,0,.9);border-right:1px dashed rgba(255,255,255,.12)}
+.strip-regions span:last-child{border-right:0}
+.sound-modal{width:min(1080px,94vw);max-height:90vh;overflow:auto}
+.sound-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}
+.sound-card{position:relative;text-align:left;padding:12px 11px;border-radius:12px;border:1px solid var(--line-soft);background:var(--panel-2);transition:.2s;min-height:104px;display:flex;flex-direction:column;gap:5px}
+.sound-card:hover{border-color:var(--sc,#5FE9B4);transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.25)}
+.sound-card.danger{border-color:rgba(255,90,90,.5)}
+.sound-card .sc-top{display:flex;align-items:center;gap:7px}
+.sound-card .sc-icon{font-size:19px;line-height:1}
+.sound-card .sc-name{font-size:14px;font-weight:700;color:var(--ink)}
+.sound-card .sc-meta{font-size:10px;color:var(--muted);letter-spacing:.04em}
+.sound-card .sc-desc{font-size:10.5px;line-height:1.55;color:var(--ink-2);opacity:.82}
+.sound-card .sc-cat{position:absolute;right:9px;top:10px;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:5px;color:#0B1A16;background:var(--sc,#5FE9B4)}
+.sound-mini{height:22px;border-radius:7px;border:1px solid var(--line-soft);background:var(--panel-2);margin-top:14px;position:relative;overflow:hidden}
+.sound-mini canvas{position:absolute;inset:0;width:100%;height:100%}
+.dbg-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin-top:10px}
+.dbg-item{padding:7px 9px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line-soft)}
+.dbg-item span{display:block;font-size:10px;color:var(--muted)}
+.dbg-item b{display:block;font-size:13px;color:var(--mint);font-variant-numeric:tabular-nums;margin-top:2px}
+.tpl-badge{font-size:9.5px;padding:1px 5px;border-radius:4px;border:1px solid var(--line);color:var(--muted);margin-left:5px;font-weight:600}
+.his-rate{color:var(--mint);font-weight:700}
+
+/* ========== 动效 ========== */
+@keyframes recPulse{0%,100%{box-shadow:0 0 0 rgba(255,93,93,0)}50%{box-shadow:0 0 22px rgba(255,93,93,.65)}}
+@keyframes breathe{0%,100%{opacity:.55;transform:scale(.94)}50%{opacity:1;transform:scale(1.06)}}
+@keyframes barPulse{0%,100%{transform:scaleY(.45);opacity:.55}50%{transform:scaleY(1);opacity:1}}
+@keyframes ringOut{0%{transform:scale(.35);opacity:0}18%{opacity:.75}100%{transform:scale(1.5);opacity:0}}
+@keyframes dashFlow{to{stroke-dashoffset:-28}}
+@keyframes sparkRun{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(150px);opacity:0}}
+@keyframes listenPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes hitPop{0%{transform:scale(.7);opacity:.2}45%{transform:scale(1.16);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes flashOut{0%{opacity:0}10%{opacity:1}100%{opacity:0}}
+@keyframes panelFlash{0%{box-shadow:0 0 0 rgba(var(--halo-rgb),0)}18%{box-shadow:0 0 55px rgba(var(--halo-rgb),.55),inset 0 0 40px rgba(var(--halo-rgb),.18)}100%{box-shadow:0 0 0 rgba(var(--halo-rgb),0)}}
+@keyframes oledHit{0%{background:#05090A}12%{background:#2BFFD0;box-shadow:0 0 40px rgba(95,233,180,.9)}100%{background:#05090A}}
+@keyframes chipIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+@keyframes modalIn{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+
+/* ========== 响应式 ========== */
+@media (max-width:1360px){
+  .app{padding:18px 24px 20px;gap:13px;grid-template-rows:40px auto minmax(0,1fr) 158px}
+  .main{grid-template-columns:minmax(280px,320px) minmax(0,1fr)}
+  .hero-visual{width:min(36vw,440px)}
+  h1{font-size:46px}
+}
+@media (max-width:1100px), (max-height:720px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100vh;grid-template-rows:auto}
+  .hero{flex-wrap:wrap}
+  .hero-visual{width:100%;max-width:460px}
+  .main{grid-template-columns:1fr}
+  .lib{min-height:390px}
+  .stage{min-height:400px}
+  .timeline{flex-wrap:wrap;overflow:visible}
+  .history{min-height:190px}
+  .steps{grid-template-columns:repeat(2,1fr);gap:22px}
+  .steps::before{display:none}
+  .train-grid{grid-template-columns:1fr}
+  .fps{display:none}
+  .mic-note{display:none}
+}
+@media (max-width:640px){
+  .app{padding:14px}
+  .topbar{flex-wrap:wrap;height:auto}
+  .top-right{gap:12px;flex-wrap:wrap}
+  .steps{grid-template-columns:1fr}
+  .demo-foot{flex-wrap:wrap}
+  .btn-primary{width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="flash-edge" id="flashEdge"></div>
+<div class="flash" id="flash"></div>
+
+<div class="app">
+
+  <!-- ===== 顶栏 ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>声音的形状</span>
+      <span class="brand-sep" aria-hidden="true"></span>
+      <span class="brand-sub">SONORA · VOICEPRINT PLATFORM</span>
+    </div>
+    <div class="top-right">
+      <span class="top-stat">累计识别 <b class="num" id="totalCount">1,284</b> 次</span>
+      <span class="live"><span class="live-dot" aria-hidden="true"></span><span id="liveText">硬件已连接 · 呼吸静</span></span>
+      <div class="theme-switch" role="group" aria-label="黑白配色切换">
+        <span class="ts-label">配色</span>
+        <button class="ts-btn" data-mode="dark" aria-pressed="true" title="切换到黑色主题"><span class="swatch"></span>黑</button>
+        <button class="ts-btn" data-mode="light" aria-pressed="false" title="切换到白色主题"><span class="swatch"></span>白</button>
+      </div>
+      <span class="clock num" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <!-- ===== 1. 平台概念区 ===== -->
+  <section class="hero" aria-labelledby="mainTitle">
+    <div class="hero-left">
+      <p class="eyebrow">SOUND → LIGHT · 声纹可视化平台</p>
+      <h1 id="mainTitle">声音的<span class="grad">形状</span></h1>
+      <p class="hero-sub">声 纹 可 视 化 平 台</p>
+      <p class="hero-lead">你教它认什么声音，它就用<span>光</span>告诉你</p>
+      <div class="hero-actions">
+        <button class="btn btn-ghost" id="guideBtn" aria-haspopup="dialog">查看训练引导 · 4 步 <span aria-hidden="true">↗</span></button>
+        <button class="btn btn-ghost" id="soundLibBtn" aria-haspopup="dialog">声音库 · 15 种 <span aria-hidden="true">↗</span></button>
+        <span class="hint">长按硬件 10 秒，或用本机麦克风在训练工作台录入</span>
+      </div>
+    </div>
+
+    <div class="hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 470 180" role="img">
+        <defs>
+          <linearGradient id="waveGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#5FE9B4" stop-opacity=".25"/>
+            <stop offset=".55" stop-color="#5FE9B4"/>
+            <stop offset="1" stop-color="#B6FFE2"/>
+          </linearGradient>
+          <linearGradient id="lightGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#22BE92"/>
+            <stop offset="1" stop-color="#B6FFE2"/>
+          </linearGradient>
+          <radialGradient id="coreGrad">
+            <stop offset="0" stop-color="#FFFFFF"/>
+            <stop offset=".35" stop-color="#B6FFE2"/>
+            <stop offset="1" stop-color="#5FE9B4" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+
+        <!-- 左侧：声波 -->
+        <g fill="url(#waveGrad)">
+          <rect class="sbar" x="12"  y="60" width="7" height="50" rx="3.5" style="animation-delay:-.0s"/>
+          <rect class="sbar" x="25"  y="45" width="7" height="80" rx="3.5" style="animation-delay:-.2s"/>
+          <rect class="sbar" x="38"  y="30" width="7" height="110" rx="3.5" style="animation-delay:-.45s"/>
+          <rect class="sbar" x="51"  y="52" width="7" height="66" rx="3.5" style="animation-delay:-.7s"/>
+          <rect class="sbar" x="64"  y="22" width="7" height="126" rx="3.5" style="animation-delay:-.95s"/>
+          <rect class="sbar" x="77"  y="48" width="7" height="74" rx="3.5" style="animation-delay:-1.2s"/>
+          <rect class="sbar" x="90"  y="36" width="7" height="98" rx="3.5" style="animation-delay:-1.45s"/>
+          <rect class="sbar" x="103" y="62" width="7" height="46" rx="3.5" style="animation-delay:-1.6s"/>
+        </g>
+        <line x1="8" y1="150" x2="118" y2="150" stroke="url(#waveGrad)" stroke-width="1" opacity=".35"/>
+
+        <!-- 中间：转化箭头 -->
+        <line x1="132" y1="85" x2="288" y2="85" stroke="#5FE9B4" stroke-width="1" opacity=".22"/>
+        <line class="arrow-line" x1="132" y1="85" x2="288" y2="85" stroke="url(#lightGrad)" stroke-width="2.5" stroke-linecap="round"/>
+        <polygon points="296,85 285,79 285,91" fill="#5FE9B4"/>
+        <circle class="spark" cx="138" cy="85" r="4" fill="#B6FFE2" filter="drop-shadow(0 0 8px #5FE9B4)"/>
+
+        <!-- 右侧：光效 -->
+        <g fill="none" stroke="url(#lightGrad)" transform="translate(0,0)">
+          <circle class="sring" cx="380" cy="85" r="34" stroke-width="1.5" style="animation-delay:0s"/>
+          <circle class="sring" cx="380" cy="85" r="34" stroke-width="1.5" style="animation-delay:-1s"/>
+          <circle class="sring" cx="380" cy="85" r="34" stroke-width="1.5" style="animation-delay:-2s"/>
+        </g>
+        <circle cx="380" cy="85" r="42" fill="url(#coreGrad)" opacity=".55"/>
+        <circle class="core-dot" cx="380" cy="85" r="9" fill="#EAFFF6"/>
+        <g stroke="#5FE9B4" stroke-width="1.6" stroke-linecap="round" opacity=".8">
+          <line x1="380" y1="20" x2="380" y2="32"/>
+          <line x1="380" y1="138" x2="380" y2="150"/>
+          <line x1="315" y1="85" x2="327" y2="85"/>
+          <line x1="433" y1="85" x2="445" y2="85"/>
+          <line x1="334" y1="39" x2="343" y2="48"/>
+          <line x1="417" y1="122" x2="426" y2="131"/>
+          <line x1="426" y1="39" x2="417" y2="48"/>
+          <line x1="343" y1="122" x2="334" y2="131"/>
+        </g>
+
+        <text class="v-label" x="12" y="172">声 波 输 入</text>
+        <text class="v-label" x="338" y="172">光 效 反 馈</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ===== 2 + 3. 声纹库 / 识别演示 ===== -->
+  <section class="main">
+    <!-- 声纹库 -->
+    <aside class="lib panel" aria-labelledby="libTitle">
+      <div class="panel-head">
+        <h2 class="panel-title" id="libTitle">声纹库</h2>
+        <span class="panel-tag" id="libCount">4 个模板</span>
+        <button class="mini-btn" id="addBtn" aria-haspopup="dialog">＋ 新建模板</button>
+      </div>
+      <div class="cards" id="cards" role="group" aria-label="已训练的声纹模板"></div>
+
+      <div class="lib-stats" aria-label="声纹库概览">
+        <div class="lib-stat"><b class="num" id="statSamples">20</b><span>训练样本</span></div>
+        <div class="lib-stat"><b class="num">95.8%</b><span>平均置信度</span></div>
+        <div class="lib-stat"><b class="num" id="statUpdated">11-05</b><span>最后更新</span></div>
+      </div>
+
+      <div class="hw" aria-label="硬件 OLED 屏幕镜像">
+        <div class="oled" id="oled">
+          <span class="oled-text" id="oledText">静</span>
+          <span class="oled-bars" aria-hidden="true">
+            <i style="animation-delay:-.1s"></i><i style="animation-delay:-.4s"></i><i style="animation-delay:-.8s"></i><i style="animation-delay:-1.2s"></i><i style="animation-delay:-.6s"></i>
+          </span>
+        </div>
+        <div class="hw-meta">
+          <b>硬件镜像 · OLED 0.96″</b>
+          <span id="hwStatus">待机呼吸静 · 页面同步闪烁</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 识别演示 -->
+    <div class="demo panel" id="demoPanel" aria-labelledby="demoTitle">
+      <div class="panel-head">
+        <h2 class="panel-title" id="demoTitle">实时识别演示</h2>
+        <span class="panel-tag fps">CANVAS WAVEFORM · 60 FPS</span>
+        <div class="demo-tools">
+          <div class="mode-switch" role="group" aria-label="输入源切换">
+            <button class="mode-btn" id="modeSim" aria-pressed="true">模拟输入</button>
+            <button class="mode-btn" id="modeMic" aria-pressed="false"><span class="mdot"></span>本机麦克风</button>
+          </div>
+          <label class="switch" id="autoWrap"><input type="checkbox" id="autoToggle" checked><span class="track"></span>自动演示</label>
+          <button class="be-badge" id="beBadge" title="点击切换 后端分析 / 仅本地"><span class="be-dot" aria-hidden="true"></span><span id="beText">检测后端…</span></button>
+        </div>
+      </div>
+
+      <div class="stage idle" id="stage">
+        <canvas id="wave" aria-hidden="true"></canvas>
+        <div class="mic-badge" aria-hidden="true"><i></i>LIVE MIC</div>
+        <div class="mic-note" id="micNote">切换「本机麦克风」后，对着电脑说话即可实时识别</div>
+        <div class="stage-overlay">
+          <div class="status-char" id="statusChar">静</div>
+          <div class="status-label" id="statusLabel" aria-live="polite">环境安静 · 等待声纹</div>
+        </div>
+        <button class="teach-btn" id="teachBtn" hidden>＋ 教它认这个声音</button>
+        <div class="mic-diag" id="micDiag" hidden role="alertdialog" aria-labelledby="diagTitle">
+          <div class="diag-head"><span class="diag-icon" aria-hidden="true">!</span><b id="diagTitle">麦克风无法启动</b><button class="diag-close" id="diagClose" aria-label="关闭诊断">×</button></div>
+          <p class="diag-reason" id="diagReason"></p>
+          <div class="diag-env" id="diagEnv"></div>
+          <div class="diag-local" id="diagLocal"></div>
+          <div class="diag-field">
+            <label for="diagDevice">选择输入设备（虚拟声卡通常没有真实声音）</label>
+            <select id="diagDevice"></select>
+          </div>
+          <ol class="diag-steps" id="diagSteps"></ol>
+          <div class="diag-actions">
+            <button class="btn btn-primary btn-sm" id="diagRetry">用所选设备重试</button>
+            <button class="btn btn-ghost btn-sm" id="diagOpen">在新窗口打开</button>
+            <button class="btn btn-ghost btn-sm" id="diagCopy">复制本地地址</button>
+            <button class="btn btn-ghost btn-sm" id="diagSim">继续模拟演示</button>
+          </div>
+        </div>
+        <div class="meter">
+          <span>能量</span>
+          <span class="meter-track"><span class="meter-fill" id="meterFill"></span></span>
+          <span class="num" id="meterVal">08%</span>
+        </div>
+        <div class="sync"><span class="sync-dot" aria-hidden="true"></span><span id="syncLabel">OLED 同步</span></div>
+      </div>
+
+      <!-- 灯带：位置=声源，颜色=类别，节奏=是哪一个声音，文字=确认（四重冗余） -->
+      <div class="strip-row" aria-label="声音灯带：位置表示声源，颜色表示类别，节奏表示具体声音">
+        <canvas id="lightBar" aria-hidden="true"></canvas>
+        <div class="strip-regions" aria-hidden="true"><span>门口</span><span>厨房</span><span>室内</span><span>窗外</span></div>
+      </div>
+
+      <div class="demo-foot">
+        <div class="now"><span class="dot" aria-hidden="true"></span>当前匹配模板 <b id="nowTpl">门铃</b></div>
+        <div class="foot-actions">
+          <button class="btn btn-ghost btn-sm" id="trainBtn" aria-haspopup="dialog">训练工作台 <span aria-hidden="true">↗</span></button>
+          <button class="btn btn-primary" id="fireBtn">模拟触发 <kbd>Space</kbd></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 4. 识别历史 ===== -->
+  <section class="history panel" aria-labelledby="hisTitle">
+    <div class="history-head">
+      <h2 class="panel-title" id="hisTitle">识别历史</h2>
+      <span class="panel-tag">持续记录 · 最新在左</span>
+      <span class="panel-tag num" id="hisCount">共 1,284 条记录</span>
+      <span class="panel-tag his-rate" id="hisRate">命中率 —</span>
+    </div>
+    <div class="timeline" id="timeline" aria-live="polite"></div>
+  </section>
+</div>
+
+<!-- ===== 5. 训练引导弹窗 ===== -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button class="modal-close" id="modalClose" aria-label="关闭">×</button>
+    <p class="modal-eyebrow">TRAINING FLOW · 硬件长按 10 秒 / 本机麦克风</p>
+    <h2 id="modalTitle">教它认一个新的声音</h2>
+    <p class="desc">两条路径：在硬件上长按训练键 10 秒；或在本页「训练工作台」用麦克风录制、上传音频文件。全程无需后端，声纹特征取平均后自动生成模板并开始守护。</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>长按 10 秒</h3>
+        <p>按住训练键不放，呼吸灯转为快闪，设备进入采样模式。</p>
+        <span class="key">HOLD · 10s</span>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>录制 N 次</h3>
+        <p>在真实场景中重复发出声音，建议 5 次，覆盖不同距离与音量。</p>
+        <span class="key">SAMPLES · 5</span>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>取平均特征</h3>
+        <p>对齐波形并提取 MFCC 均值，滤除偶发噪声，得到稳定声纹。</p>
+        <span class="key">AVERAGE · MFCC</span>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <h3>命名并保存</h3>
+        <p>给它一个名字写入模板库，此后命中即用光效与 OLED 同步提示。</p>
+        <span class="key">SAVE · 模板库</span>
+      </div>
+    </div>
+    <div class="modal-note">
+      <b>无障碍提示 ·</b> 全流程同时提供「呼吸灯 / 闪烁 / 高对比文字」三重反馈；听障用户可通过光效节奏判断状态，页面右上角可切换黑 / 白高对比配色。麦克风模式听到「未知」时，可一键把该声音转为训练样本。
+      <div style="margin-top:12px"><button class="btn btn-ghost btn-sm" id="guideToTrain">打开训练工作台 · 用本机麦克风录入 →</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 6. 训练工作台：麦克风录制 / 音频上传 ===== -->
+<div class="modal" id="trainModal" hidden>
+  <div class="modal-backdrop" data-close="train"></div>
+  <div class="modal-panel train-panel" role="dialog" aria-modal="true" aria-labelledby="trainTitle">
+    <button class="modal-close" id="trainClose" aria-label="关闭">×</button>
+    <p class="modal-eyebrow">LOCAL TRAINING · 麦克风 / 音频上传</p>
+    <h2 id="trainTitle">训练工作台</h2>
+    <p class="desc">录几段声音，或上传本地音频文件。浏览器提取 7 维特征并取平均，生成模板后立刻可用于识别；后端在线时自动同步到 SQLite，并可由服务端补算 13 阶 MFCC。不启后端也能纯本地训练。</p>
+
+    <div class="train-grid">
+      <div class="train-col">
+        <h3>① 选择训练目标</h3>
+        <p class="sub">可以重新训练已有模板，也可以创建一个全新的声音。</p>
+        <div class="field">
+          <label for="trainTarget">目标模板 <span class="field-hint" id="targetCount"></span></label>
+          <select id="trainTarget"></select>
+        </div>
+        <div class="field" id="newNameField" hidden>
+          <label for="trainName">新模板名称</label>
+          <input type="text" id="trainName" maxlength="12" placeholder="例如：拍手 / 猫叫 / 水壶哨">
+        </div>
+
+        <h3 style="margin-top:16px">② 采集样本</h3>
+        <p class="sub">建议 3–5 段，覆盖不同距离与音量。录音与文件均只在本机解码，不会自动外传。</p>
+        <div class="train-row">
+          <button class="btn btn-ghost btn-sm" id="recBtn">● 录制 1.5 秒</button>
+          <button class="btn btn-ghost btn-sm" id="fileBtn">↑ 上传音频文件</button>
+          <button class="btn btn-ghost btn-sm" id="trainDiagBtn">⚙ 设备诊断</button>
+          <input type="file" id="audioFiles" accept="audio/*" multiple hidden>
+        </div>
+        <div class="samples" id="sampleList"></div>
+        <div class="train-engine" id="engineStatus">分析引擎：检测中…</div>
+        <div class="train-status" id="trainStatus">等待样本 · 1 段即可生成声纹，建议 3 段以上更稳定。</div>
+        <button class="btn btn-ghost btn-sm" id="useUnknownBtn" hidden style="margin-top:10px">＋ 收录刚才的「未知声音」为样本</button>
+      </div>
+
+      <div class="train-col">
+        <h3>③ 声纹特征预览</h3>
+        <p class="sub">样本取平均后的特征：过零率 / 谱心 / 低中高频能量 / 峰值因子 / 响度。识别时用加权距离比对。</p>
+        <div class="feat" id="featBars"></div>
+        <div class="train-status" id="consistBox">样本一致性：—<br>一致性越高，现场识别越稳。</div>
+        <div class="train-row" style="margin-top:16px">
+          <button class="btn btn-primary btn-sm" id="saveBtn" disabled>取平均并保存模板</button>
+          <button class="btn btn-ghost btn-sm" id="uploadBtn" title="把已采集样本上传到本机后端 /api/train 并更新模板；配 ?upload= 时改发外部端点">上传样本</button>
+          <button class="btn btn-ghost btn-sm" id="selfTestBtn" title="优先用最后一段采集样本自检；无样本时用合成纯音只验证链路（不写入识别历史）">⚡ 后端自检</button>
+          <button class="btn btn-ghost btn-sm" id="syncBtn">同步后端模板</button>
+          <button class="btn btn-ghost btn-sm" id="resetBtn">重置本地训练</button>
+        </div>
+        <p class="sub" style="margin-top:12px">「上传样本」默认把样本 POST 到本机 <b>/api/train</b> 更新 SQLite 模板；保存模板时也会自动双写。<b>?api=</b> 指定服务地址，<b>?upload=</b> 可改发外部端点。自检使用 dryRun，不污染识别历史。</p>
+      </div>
+    </div>
+
+    <div class="train-foot"><span class="hint">提示：录制会请求麦克风权限；若以 file:// 打开被拦截，请改用 localhost / https，并在独立浏览器窗口（非预览面板 iframe）中运行。录不到声音时点「设备诊断」切换真实麦克风。</span></div>
+  </div>
+</div>
+
+<!-- ===== 7. 内置声音库（合并自 sound-shape，15 种声音，无需麦克风） ===== -->
+<div class="modal" id="soundModal" hidden>
+  <div class="modal-backdrop" data-close="sound"></div>
+  <div class="modal-panel sound-modal" role="dialog" aria-modal="true" aria-labelledby="soundTitle">
+    <button class="modal-close" id="soundClose" aria-label="关闭">×</button>
+    <p class="modal-eyebrow">SOUND LIBRARY · 15 BUILT-IN SOUNDS · 13 LIVE CLASSES</p>
+    <h2 id="soundTitle">声音库</h2>
+    <p class="desc">点任意卡片会<b>发声、亮灯、出字</b>，不需要麦克风也能完整演示。位置=声源、颜色=类别、节奏=具体声音，三重编码互为冗余；规则识别器覆盖其中 13 类，自定义训练模板优先。</p>
+    <div class="sound-grid" id="soundGrid"></div>
+    <div class="sound-mini"><canvas id="soundBar" aria-hidden="true"></canvas></div>
+    <details style="margin-top:14px">
+      <summary style="cursor:pointer;font-size:12px;color:var(--muted)">调试面板 · 它此刻听到什么（现场可展开给评委看）</summary>
+      <div class="dbg-grid" id="dbgGrid"></div>
+    </details>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- 合并自 sound-shape：13 类规则识别 / 15 声音库 / 训练库多样本匹配 / 合成音 -->
+<script src="soundshape-core.js"></script>
+<script>
+/* ==================== 声纹模板（内置样例 + 本机训练结果） ====================
+   7 维特征：[过零率, 谱心, 低频占比, 中频占比, 高频占比, 峰值因子, 响度]
+   内置的是"理想原型"，用本机麦克风/上传音频训练后会被真实均值替换。        */
+const FEAT_NAMES = ['过零率','谱心','低频','中频','高频','峰值','响度'];
+const FEAT_W = [1.35,1.30,1.00,1.05,1.10,.70,.35];
+const W_SUM = FEAT_W.reduce((a,b)=>a+b,0);
+const MATCH_THRESHOLD = (()=>{
+  // 可用 ?th=55 临时放宽，方便现场标定；默认 70
+  const v = Number(new URLSearchParams(location.search).get('th'));
+  return Number.isFinite(v) && v >= 20 && v <= 99 ? v : 70;
+})();
+const DBG = new URLSearchParams(location.search).has('debug');
+let dbgEl = null;
+function dbgShow(o){
+  if(!dbgEl){
+    dbgEl = document.createElement('pre');
+    dbgEl.id = 'dbgPanel';
+    dbgEl.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;margin:0;' +
+      'padding:8px 10px;background:rgba(0,0,0,.85);color:#7FE9FF;' +
+      'font:11px/1.6 Menlo,Consolas,monospace;border:1px solid rgba(127,233,255,.35);' +
+      'border-radius:6px;max-width:56vw;white-space:pre-wrap;pointer-events:none';
+    document.body.appendChild(dbgEl);
+  }
+  dbgEl.textContent =
+    'avg   ' + o.avg.map(v=>v.toFixed(3)).join(' ') + '\n' +
+    'best  ' + (o.best||'—') + '   d=' + o.d.toFixed(3) +
+    '   conf=' + o.conf.toFixed(1) + '   阈值=' + o.thr + '\n' +
+    'custom=' + (o.custom==null?'—':o.custom.toFixed(0)) +
+    '   rule=' + (o.rule||'—');
+}
+
+/* 常驻 HUD：每帧都刷，不管识别有没有跑完。
+   用来判断「卡在哪个状态」——如果 busy=1 一直不变，就是事件没结束。 */
+let dbgHudEl = null;
+function dbgHud(){
+  if(!DBG) return;
+  if(!dbgHudEl){
+    dbgHudEl = document.createElement('div');
+    dbgHudEl.style.cssText = 'position:fixed;left:8px;top:8px;z-index:99999;' +
+      'padding:7px 10px;background:rgba(0,0,0,.82);color:#7BE495;' +
+      'font:11px/1.55 Menlo,Consolas,monospace;border:1px solid rgba(123,228,149,.35);' +
+      'border-radius:6px;white-space:pre;pointer-events:none';
+    document.body.appendChild(dbgHudEl);
+  }
+  var m = (typeof MIC !== 'undefined' && MIC) ? MIC : {};
+  var busy = (typeof state !== 'undefined' && state.busy) ? 1 : 0;
+  var stage = document.querySelector('#stage');
+  var mode = stage ? (stage.className || '').replace('stage ', '').trim() : '?';
+  dbgHudEl.textContent =
+    'MIC ' + (m.active ? 'ON ' : 'off') + '   busy=' + busy +
+    '   inEvent=' + (m.inEvent ? 1 : 0) +
+    '   frames=' + ((m.frames && m.frames.length) || 0) + '\n' +
+    'rms=' + (m.rms || 0).toFixed(4) + '   noise=' + (m.noise || 0).toFixed(4) +
+    '   status=' + mode;
+}
+const STORE_KEY = 'sonora.voiceprint.v1';
+/* 合并自 sound-shape 的识别核心（UMD，file:// 下也能加载同目录脚本） */
+const SSC = window.SoundShapeCore || null;
+
+/* 规则识别运行时：帧分析器 / 平滑状态 / 灯带状态 / 合成音 */
+const SS = {
+  analyzer:null, sf:SSC?SSC.newSmooth():null, f:null, lastFeed:0,
+  strip:null, synth:null, synthCtx:null,
+  ensureAnalyzer(sr){
+    if(!SSC) return null;
+    if(!this.analyzer || this.analyzer.sr!==sr) this.analyzer=new SSC.SSAnalyzer(sr, 2048);
+    return this.analyzer;
+  },
+  feed(frame, sr, dtMs){
+    const an=this.ensureAnalyzer(sr); if(!an) return;
+    this.f = SSC.smooth(this.sf, an.process(frame), dtMs||16);
+  },
+  show(sound, conf){
+    if(!sound) return;
+    this.strip = { sound, conf:conf||1, start:performance.now() };
+  },
+  showByName(name, conf){
+    const s = SSC ? SSC.SOUNDS.find(x=>x.name===name) : null;
+    if(s) this.show(s, conf);
+    else this.strip = { custom:name, conf:conf||1, start:performance.now() };
+  },
+  play(key){
+    if(!SSC) return false;
+    try{
+      if(!this.synthCtx) this.synthCtx = new (window.AudioContext||window.webkitAudioContext)();
+      if(this.synthCtx.state==='suspended') this.synthCtx.resume();
+      if(!this.synth) this.synth = SSC.createSynth(this.synthCtx);
+      return this.synth.play(key);
+    }catch(e){ return false; }
+  }
+};
+
+const BASE_TEMPLATES = [
+  { id:'bell',  name:'门铃',     rec:'11-02 09:14', count:342, custom:false, bars:[9,20,13,26,16],  prototype:[.33,.25,.05,.75,.20,.30,.40] },
+  { id:'knock', name:'敲门',     rec:'11-02 09:26', count:128, custom:false, bars:[22,8,24,9,18],  prototype:[.05,.03,.85,.12,.03,.60,.40] },
+  { id:'baby',  name:'婴儿哭',   rec:'11-03 21:07', count:76,  custom:false, bars:[12,26,18,28,14],prototype:[.25,.19,.25,.55,.20,.35,.35] },
+  { id:'glass', name:'玻璃碎裂', rec:'11-05 18:33', count:21,  custom:true,  bars:[28,10,22,7,25], prototype:[.65,.50,.04,.30,.66,.60,.40] },
+];
+/* 训练库字段合并自 sound-shape：cat/region/icon + 多样本 vecs + 命中计数 */
+const TPL_META = {
+  bell :{ cat:'env',    region:'door',    icon:'🔔', ruleKey:'doorbell' },
+  knock:{ cat:'env',    region:'door',    icon:'✊', ruleKey:'knock'    },
+  baby :{ cat:'voice',  region:'all',     icon:'😢', ruleKey:'cry'      },
+  glass:{ cat:'env',    region:'window',  icon:'🪟', ruleKey:null       }
+};
+let TEMPLATES = BASE_TEMPLATES.map(t=>({
+  ...t, prototype:t.prototype.slice(), bars:t.bars.slice(),
+  trained:false, samples:0, vecs:[],
+  cat:(TPL_META[t.id]||{}).cat||'env',
+  region:(TPL_META[t.id]||{}).region||'door',
+  icon:(TPL_META[t.id]||{}).icon||'⭐',
+  ruleKey:(TPL_META[t.id]||{}).ruleKey||null,
+  hitCount:0, lastUsed:0, enabled:true
+}));
+
+const now = Date.now();
+const state = {
+  selected:'bell',
+  busy:false,
+  auto:true,
+  autoBeforeMic:true,
+  mode:'sim',                 // 'sim' 模拟 | 'mic' 本机麦克风
+  total:1284,
+  samples:20,
+  logs:[
+    { name:'门铃',     time: now - 1000*60*2,  conf:97.2 },
+    { name:'敲门',     time: now - 1000*60*11, conf:94.8 },
+    { name:'门铃',     time: now - 1000*60*24, conf:98.1 },
+    { name:'婴儿哭',   time: now - 1000*60*41, conf:93.6 },
+    { name:'门铃',     time: now - 1000*60*58, conf:96.4 },
+    { name:'玻璃碎裂', time: now - 1000*60*76, conf:91.9 },
+    { name:'敲门',     time: now - 1000*60*94, conf:95.3 },
+    { name:'门铃',     time: now - 1000*60*112,conf:97.8 },
+  ]
+};
+
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const pad = n => String(n).padStart(2,'0');
+function fmtClock(d){ return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
+function fmtShort(d){ return pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+fmtClock(d); }
+function comma(n){ return n.toLocaleString('en-US'); }
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastTimer = null;
+function toast(msg, ms){
+  const el = $('#toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), ms||3200);
+}
+function barsFromFeat(f){ return f.slice(0,5).map((v,i)=>Math.round(6+clamp(v,0,1)*24)+(i%2?2:0)); }
+
+/* 本机持久化：训练出的声纹模板 / 计数 / 历史，刷新后仍在 */
+function loadTrained(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY); if(!raw) return;
+    const s = JSON.parse(raw);
+    (s.templates||[]).forEach(v=>{
+      if(!Array.isArray(v.prototype) || v.prototype.length!==7) return;
+      const t = TEMPLATES.find(x=>x.id===v.id);
+      if(t){ t.prototype=v.prototype; t.trained=!!v.trained; t.samples=v.samples||0;
+             if(v.rec) t.rec=v.rec; if(typeof v.count==='number') t.count=v.count;
+             if(Array.isArray(v.vecs)) t.vecs=v.vecs;
+             if(v.cat) t.cat=v.cat; if(v.region) t.region=v.region; if(v.icon) t.icon=v.icon;
+             if(typeof v.hitCount==='number') t.hitCount=v.hitCount;
+             if(typeof v.lastUsed==='number') t.lastUsed=v.lastUsed;
+             if(typeof v.enabled==='boolean') t.enabled=v.enabled; }
+      else TEMPLATES.push({ id:v.id, name:v.name, rec:v.rec, count:v.count||0, custom:true,
+                            bars:v.bars||barsFromFeat(v.prototype), prototype:v.prototype,
+                            trained:!!v.trained, samples:v.samples||0, vecs:v.vecs||[],
+                            cat:v.cat||'env', region:v.region||'door', icon:v.icon||'⭐',
+                            ruleKey:v.ruleKey||null, hitCount:v.hitCount||0,
+                            lastUsed:v.lastUsed||0, enabled:v.enabled!==false });
+    });
+    if(typeof s.total==='number') state.total=s.total;
+    if(typeof s.samples==='number') state.samples=s.samples;
+    if(Array.isArray(s.logs)) state.logs=s.logs.slice(0,12);
+  }catch(e){ console.warn('本地声纹读取失败：',e); }
+}
+function saveTrained(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      templates:TEMPLATES, total:state.total, samples:state.samples, logs:state.logs.slice(0,12)
+    }));
+  }catch(e){ console.warn('本地声纹保存失败：',e); }
+}
+
+/* ==================== 声纹库 ==================== */
+function renderCards(){
+  $('#libCount').textContent = TEMPLATES.length + ' 个模板';
+  $('#cards').innerHTML = TEMPLATES.map(t => `
+    <button class="card" data-id="${t.id}" aria-pressed="${t.id===state.selected}">
+      <span class="card-icon" aria-hidden="true">${t.bars.map(h=>`<i style="height:${h}px"></i>`).join('')}</span>
+      <span class="card-main">
+        <span class="card-name">${esc(t.name)}${t.custom?'<span class="custom-badge">自定义</span>':''}${t.trained?'<span class="trained-badge">已训练</span>':''}</span>
+        <span class="card-meta num">${esc(t.icon||'⭐')} ${esc((SSC?SSC.CAT_NAME[t.cat]:t.cat)||'环境声')} · ${esc(SSC?SSC.REGION_NAME[t.region]:t.region)} · 识别 ${t.count} 次${t.vecs&&t.vecs.length?' · '+t.vecs.length+' 指纹':''}</span>
+      </span>
+      <span class="card-flag">当前</span>
+    </button>`).join('');
+  $$('.card').forEach(el => el.addEventListener('click', () => selectTemplate(el.dataset.id)));
+}
+function selectTemplate(id){
+  state.selected = id;
+  $$('.card').forEach(el => el.setAttribute('aria-pressed', String(el.dataset.id===id)));
+  const t = TEMPLATES.find(x=>x.id===id);
+  $('#nowTpl').textContent = t.name;
+  if(!state.busy) setStatus('idle');
+}
+
+/* ==================== 识别历史 ==================== */
+function renderLogs(){
+  $('#hisCount').textContent = '共 ' + comma(state.total) + ' 条记录';
+  $('#totalCount').textContent = comma(state.total);
+  $('#timeline').innerHTML = state.logs.slice(0,10).map((l,i)=>`
+    <div class="chip${l.unknown?' unknown':''}" style="animation-delay:${i*35}ms">
+      <div class="chip-top"><span class="chip-dot"></span>${l.unknown?'未收录声音':(l.source==='mic'?'麦克风命中':(i===0?'刚刚命中':'历史记录'))}</div>
+      <div class="chip-name">${esc(l.name)}</div>
+      <div class="chip-bottom"><span class="num">${fmtShort(new Date(l.time))}</span><span class="chip-conf num">${l.conf.toFixed(1)}%</span></div>
+    </div>`).join('');
+  const shown = state.logs.slice(0,10);
+  const hits = shown.filter(l=>!l.unknown).length;
+  $('#hisRate').textContent = shown.length
+    ? '近 '+shown.length+' 条命中率 '+Math.round(hits/shown.length*100)+'%' : '命中率 —';
+}
+
+/* ==================== 状态机 ==================== */
+function setStatus(mode, name, conf){
+  const stage = $('#stage');
+  stage.classList.remove('idle','listening','hit','unknown');
+  stage.classList.add(mode);
+  $('#teachBtn').hidden = !(mode==='unknown' && state.mode==='mic' && lastUnknownFeat);
+  if(mode==='idle'){
+    $('#statusChar').textContent = '静';
+    $('#statusLabel').textContent = state.mode==='mic' ? '环境安静 · 麦克风监听中' : '环境安静 · 等待声纹';
+    $('#oledText').textContent = '静';
+    $('#hwStatus').textContent = state.mode==='mic' ? '本机麦克风 · 实时采样' : '待机呼吸静 · 页面同步闪烁';
+  }else if(mode==='listening'){
+    $('#statusChar').textContent = '听';
+    $('#statusLabel').textContent = '检测到声音 · 正在比对声纹…';
+    $('#oledText').textContent = '…';
+    $('#hwStatus').textContent = '采样中 · OLED 快闪';
+  }else if(mode==='unknown'){
+    $('#statusChar').textContent = '未知';
+    $('#statusLabel').textContent = '检测到声音 · 未收录的声纹（相似度 ' + conf.toFixed(0) + '%）';
+    $('#oledText').textContent = '？';
+    $('#hwStatus').textContent = '未知声音 · 可录入训练';
+  }else{
+    $('#statusChar').textContent = name;
+    $('#statusLabel').textContent = '命中模板 · 置信度 ' + conf.toFixed(1) + '%';
+    $('#oledText').textContent = name;
+    $('#hwStatus').textContent = '命中 ' + name + ' · OLED 同步闪烁';
+  }
+}
+function fireFlash(){
+  ['#flash','#flashEdge'].forEach(id=>{
+    const el=$(id); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  });
+  const demo=$('#demoPanel'), oled=$('#oled');
+  demo.classList.remove('hit-flash'); void demo.offsetWidth; demo.classList.add('hit-flash');
+  oled.classList.remove('hit'); void oled.offsetWidth; oled.classList.add('hit');
+}
+/* 命中 / 未知：模拟触发与真实麦克风共用同一套反馈 */
+function applyHit(t, conf, source, skipLog){
+  energy = 1.25;
+  for(let i=0;i<3;i++) rings.push({ t0: clock/1000 + i*0.14 });
+  setStatus('hit', t.name, conf);
+  fireFlash();
+  if(typeof SS!=='undefined') SS.showByName(t.name, conf/100);
+  t.count += 1;
+  t.hitCount = (t.hitCount||0) + 1;
+  t.lastUsed = Date.now();
+  if(!skipLog){
+    state.total += 1;
+    state.logs.unshift({ name:t.name, time:Date.now(), conf, source });
+    state.logs = state.logs.slice(0,12);
+    saveTrained();
+  }
+  renderLogs(); renderCards();
+  setTimeout(()=>{ if(!state.busy) return; state.busy=false; setStatus('idle'); }, 2300);
+}
+function noteUnknown(conf, feat, skipLog){
+  lastUnknownFeat = feat;
+  if(!skipLog){
+    state.logs.unshift({ name:'未知声音', time:Date.now(), conf, source:'mic', unknown:true });
+    state.logs = state.logs.slice(0,12);
+    state.total += 1;
+    saveTrained();
+  }
+  renderLogs();
+  setStatus('unknown','未知',conf);
+  setTimeout(()=>{ if(!state.busy) return; state.busy=false; setStatus('idle'); }, 1900);
+}
+function trigger(){
+  // 麦克风模式下：不伪造命中，立即对当前采集缓冲做一次真实识别
+  if(state.mode==='mic'){ micForceRecognize(); return; }
+  if(state.busy) return;
+  state.busy = true;
+  setStatus('listening');
+  energy = Math.max(energy,.38);
+  setTimeout(()=>{
+    const t = TEMPLATES.find(x=>x.id===state.selected);
+    applyHit(t, 91 + Math.random()*8.4, 'sim');
+  }, 560 + Math.random()*320);
+}
+
+/* ==================== 弹窗 / 主题 / 交互 ==================== */
+const modal = $('#modal');
+const trainModal = $('#trainModal');
+function openModal(){ modal.hidden = false; $('#modalClose').focus(); }
+function closeModal(){ modal.hidden = true; $('#guideBtn').focus(); }
+function openTrain(){
+  refreshTargetOptions();
+  renderSamples();
+  trainModal.hidden = false;
+  $('#trainClose').focus();
+}
+function closeTrain(){ trainModal.hidden = true; $('#trainBtn').focus(); }
+$('#guideBtn').addEventListener('click', ()=>{ $('#modalTitle').textContent='教它认一个新的声音'; openModal(); });
+$('#addBtn').addEventListener('click', ()=>{ $('#modalTitle').textContent='新建声纹模板 · 训练流程'; openModal(); });
+$('#guideToTrain').addEventListener('click', ()=>{ closeModal(); openTrain(); });
+$('#trainBtn').addEventListener('click', openTrain);
+$('#modalClose').addEventListener('click', closeModal);
+$('#trainClose').addEventListener('click', closeTrain);
+modal.querySelector('[data-close]').addEventListener('click', closeModal);
+trainModal.querySelector('[data-close]').addEventListener('click', closeTrain);
+$('#trainTarget').addEventListener('change', e=>{ $('#newNameField').hidden = e.target.value !== '__new'; });
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    if(!$('#soundModal').hidden) closeSoundModal();
+    else if(!trainModal.hidden) closeTrain();
+    else if(!modal.hidden) closeModal();
+  }
+  if((e.code==='Space' || e.key===' ') && !e.repeat
+     && modal.hidden && trainModal.hidden && $('#soundModal').hidden){
+    const tag = (e.target.tagName||'').toLowerCase();
+    if(tag==='button' || tag==='input' || tag==='select' || tag==='textarea') return;
+    e.preventDefault(); trigger();
+  }
+});
+
+function setTheme(mode){
+  document.body.dataset.theme = mode;
+  $$('.ts-btn').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.mode===mode)));
+  pal = readPal();
+}
+$$('.ts-btn').forEach(b=>b.addEventListener('click',()=>setTheme(b.dataset.mode)));
+
+$('#fireBtn').addEventListener('click', trigger);
+$('#autoToggle').addEventListener('change', e=>{ state.auto = e.target.checked; });
+setInterval(()=>{ $('#clock').textContent = fmtClock(new Date()); },1000);
+$('#clock').textContent = fmtClock(new Date());
+
+// 自动演示：路演时无需操作也会周期性产生识别，体现「平台持续性」
+function autoLoop(){
+  const wait = 11000 + Math.random()*7000;
+  setTimeout(()=>{
+    if(state.auto && state.mode==='sim' && !state.busy && modal.hidden && trainModal.hidden
+       && $('#soundModal').hidden && !document.hidden) trigger();
+    autoLoop();
+  }, wait);
+}
+autoLoop();
+
+/* ==================== 本机麦克风：采集 / 特征提取 / 实时识别 ==================== */
+let lastUnknownFeat = null;
+let recording = false, pendingMic = false, trainSeq = 0;
+const TRAIN_SAMPLES = [];
+const UPLOAD_URL = new URLSearchParams(location.search).get('upload') || window.VOICEPRINT_UPLOAD_URL || '';
+
+const MIC = {
+  active:false, stream:null, actx:null, analyser:null, src:null,
+  time:null, freq:null, rms:0, feat:null, noise:.006,
+  inEvent:false, frames:[], eventStart:0, lastEvent:0
+};
+
+/* --- 2048 点基 2 FFT（实时采样与离线音频共用，保证特征一致） --- */
+let FFT_TABLE = null;
+function fftMagnitudes(frame){
+  const N = frame.length;
+  if(!FFT_TABLE || FFT_TABLE.n !== N){
+    const bits = Math.log2(N), rev = new Uint32Array(N);
+    const cos = new Float32Array(N/2), sin = new Float32Array(N/2);
+    for(let i=0;i<N;i++){
+      let x=i, r=0;
+      for(let b=0;b<bits;b++){ r=(r<<1)|(x&1); x>>=1; }
+      rev[i]=r;
+    }
+    for(let i=0;i<N/2;i++){ const a=-2*Math.PI*i/N; cos[i]=Math.cos(a); sin[i]=Math.sin(a); }
+    FFT_TABLE={n:N,rev,cos,sin};
+  }
+  const {rev,cos,sin} = FFT_TABLE;
+  const re=new Float32Array(N), im=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    const w=.5-.5*Math.cos(2*Math.PI*i/(N-1));       // Hann 窗
+    re[rev[i]]=frame[i]*w; im[rev[i]]=0;
+  }
+  for(let size=2;size<=N;size<<=1){
+    const half=size>>1, step=N/size;
+    for(let i=0;i<N;i+=size){
+      for(let j=0,k=0;j<half;j++,k+=step){
+        const c=cos[k], s=sin[k];
+        const tr=re[i+j+half]*c - im[i+j+half]*s;
+        const ti=re[i+j+half]*s + im[i+j+half]*c;
+        re[i+j+half]=re[i+j]-tr; im[i+j+half]=im[i+j]-ti;
+        re[i+j]+=tr; im[i+j]+=ti;
+      }
+    }
+  }
+  const mag=new Float32Array(N/2);
+  for(let i=0;i<N/2;i++) mag[i]=Math.hypot(re[i],im[i]);
+  return mag;
+}
+
+/* 单帧 → 7 维特征 */
+function extractFeatures(frame, sampleRate){
+  const N=frame.length;
+  let sum=0, peak=0, cross=0;
+  for(let i=0;i<N;i++){
+    const v=frame[i]; sum+=v*v;
+    if(Math.abs(v)>peak) peak=Math.abs(v);
+    if(i>0 && (v>=0)!==(frame[i-1]>=0)) cross++;
+  }
+  const rms=Math.sqrt(sum/N);
+  const mag=fftMagnitudes(frame), binHz=sampleRate/N;
+  let total=0, wsum=0, low=0, mid=0, high=0;
+  for(let i=1;i<mag.length;i++){
+    const f=i*binHz, e=mag[i]*mag[i];
+    total+=e; wsum+=f*e;
+    if(f<350) low+=e; else if(f<2000) mid+=e; else if(f<12000) high+=e;
+  }
+  const frac = v => total>0 ? v/total : 0;
+  return [
+    clamp(cross/N*4,0,1),                          // 过零率
+    clamp((total>0?wsum/total:0)/8000,0,1),        // 谱心（8kHz 归一化）
+    frac(low), frac(mid), frac(high),               // 低 / 中 / 高频能量占比
+    clamp(peak/(rms+1e-6)/10,0,1),                 // 峰值因子
+    clamp(rms*12,0,1)                              // 响度（低权重）
+  ];
+}
+
+/* 整段 PCM → 平均特征 + 波形包络（用于上传音频 / 录音文件） */
+function featuresFromPCM(data, sampleRate){
+  const N=2048, maxFrames=80, frames=[];
+  const stride=Math.max(1024, Math.floor((data.length-N)/maxFrames)) || 1024;
+  for(let off=0; off+N<=data.length; off+=stride){
+    const frame=new Float32Array(N);
+    let s=0;
+    for(let i=0;i<N;i++){ frame[i]=data[off+i]; s+=frame[i]*frame[i]; }
+    if(Math.sqrt(s/N) < .002) continue;            // 跳过静音帧
+    frames.push({ f:extractFeatures(frame,sampleRate), rms:Math.sqrt(s/N) });
+    if(frames.length>=maxFrames) break;
+  }
+  if(!frames.length) return { feat:new Array(7).fill(0), envelope:new Array(48).fill(0), duration:data.length/sampleRate };
+  frames.sort((a,b)=>b.rms-a.rms);
+  const keep=frames.slice(0,Math.max(1,Math.ceil(frames.length*.7)));
+  const feat=new Array(7).fill(0);
+  keep.forEach(x=>x.f.forEach((v,i)=>feat[i]+=v/keep.length));
+  const envelope=new Array(48).fill(0), chunk=Math.max(1,Math.floor(data.length/48));
+  for(let i=0;i<48;i++){
+    let p=0; const st=i*chunk, en=Math.min(data.length,st+chunk);
+    for(let j=st;j<en;j+=8) p=Math.max(p,Math.abs(data[j]));
+    envelope[i]=clamp(p*4,0,1);
+  }
+  return { feat, envelope, duration:data.length/sampleRate };
+}
+
+function featureDistance(a,b){
+  let d=0; for(let i=0;i<7;i++) d+=FEAT_W[i]*Math.abs(a[i]-b[i]);
+  return d/W_SUM;
+}
+function classify(feat){
+  let best=null, bd=Infinity;
+  TEMPLATES.forEach(t=>{
+    const d=featureDistance(feat,t.prototype);
+    if(d<bd){ bd=d; best=t; }
+  });
+  return { t:best, d:bd, conf:clamp(99 - bd*230 + (best&&best.trained?6:0), 0, 99) };
+}
+
+/* --- 麦克风诊断：权限 / 设备 / 运行环境 --- */
+function micSavedDevice(){
+  try{ return localStorage.getItem('sonora.micDevice')||''; }catch(e){ return ''; }
+}
+function micIsEmbedded(){ try{ return window.self !== window.top; }catch(e){ return true; } }
+/* 虚拟声卡判定：这类设备没有真实输入，授权成功也永远是 0 电平 */
+function isVirtualMic(label){
+  return /ToDesk|Virtual|VB-?CABLE|VoiceMeeter|Loopback|Stereo Mix|立体声混音|虚拟|Null Audio|Dummy/i.test(label||'');
+}
+/* 在已授权的设备列表里挑一个真实麦克风（排除 default / communications 别名） */
+async function pickRealMic(){
+  try{
+    const list = await navigator.mediaDevices.enumerateDevices();
+    const inputs = list.filter(d=>d.kind==='audioinput' && d.deviceId
+      && d.deviceId!=='default' && d.deviceId!=='communications');
+    const real = inputs.filter(d=>!isVirtualMic(d.label));
+    const prefer = real.find(d=>/麦克风|Microphone|Array|阵列/i.test(d.label));
+    const pick = prefer || real[0];
+    return pick ? pick.deviceId : '';
+  }catch(e){ return ''; }
+}
+async function micPermissionState(){
+  try{
+    if(!navigator.permissions || !navigator.permissions.query) return '未知';
+    const state = await Promise.race([
+      navigator.permissions.query({name:'microphone'}).then(p=>p.state),
+      new Promise(r=>setTimeout(()=>r('unknown'), 800))
+    ]);
+    return ({granted:'已允许', denied:'已拒绝', prompt:'待询问'})[state] || '未知';
+  }catch(e){ return '未知'; }
+}
+/* 本地化运行地址：后端在线用同源页面，否则给默认本机服务地址 */
+function localStandaloneUrl(){
+  return Backend.online ? Backend.url('/') : 'http://127.0.0.1:5000/';
+}
+function updateDiagLocal(){
+  const url = localStandaloneUrl();
+  $('#diagLocal').innerHTML =
+      '<b>① Windows 先开两个总开关</b>（你截图里都是「关」）：设置 → 隐私和安全性 → 麦克风 → '
+    + '「让应用访问麦克风」<b>开</b>、「让桌面应用访问麦克风」<b>开</b>。Chrome / Edge 属于桌面应用，'
+    + '这两个不开，浏览器根本拿不到设备。<br>'
+    + '<b>② 本地化运行</b>：双击 <code>start_server.bat</code>，会自动用独立浏览器窗口打开 '
+    + '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(url) + '</a>；'
+    + '也可以双击 <code>open_standalone.bat</code> 直接用本地文件打开（纯前端模式，麦克风同样可用）。'
+    + (Backend.online ? '<br><b>✓ 已检测到本机后端</b>' : '<br>当前未检测到后端，不影响麦克风，只是走浏览器本地识别。');
+}
+async function micEnvText(){
+  const perm = await micPermissionState();
+  const embedded = micIsEmbedded();
+  const p = location.protocol;
+  const preview = /^(about|blob|data):/.test(p) || embedded;
+  return '运行环境：<b>' + esc(p + '//' + (location.host || '本地文件')) + '</b> · '
+    + (window.isSecureContext ? '安全上下文 ✓' : '非安全上下文 ✗')
+    + ' · 站点权限：<b>' + esc(perm) + '</b>'
+    + (preview ? '<br><b>⚠ 当前是预览面板内嵌页（' + esc(p) + ' + iframe）</b>，不是本机独立窗口；'
+       + '浏览器会直接拒绝这里的麦克风。请按下方「本地化运行」在独立浏览器窗口打开。' : '');
+}
+const COMMON_STEPS = [
+  '<b>Windows 必开</b>：设置 → 隐私和安全性 → 麦克风 →「让应用访问麦克风」<b>开</b>、「让桌面应用访问麦克风」<b>开</b>（Chrome/Edge 是桌面应用）。',
+  '<b>本地化运行</b>：双击 <code>start_server.bat</code> 自动打开独立浏览器窗口；或双击 <code>open_standalone.bat</code> 用本地文件打开。不要在预览面板 iframe 里点麦克风。',
+  '地址栏左侧「锁 / 调谐」图标 → 麦克风 → 改为<b>允许</b>；或打开 edge://settings/content/microphone 删掉阻止条目后刷新。',
+  '设置 → 系统 → 声音 → 输入：把真实麦克风（如「阵列麦克风 AMD Audio Device」）设为默认设备，避免选中 ToDesk 等虚拟声卡。',
+  '关闭正在独占麦克风的程序（会议软件、录屏、远程桌面），然后重试。'
+];
+function micErrorInfo(err){
+  const n = (err && err.name) || '';
+  if(n==='NotAllowedError' || n==='PermissionDeniedError' || n==='SecurityError')
+    return { title:'浏览器拒绝了麦克风权限',
+      reason:'站点权限被拒绝，或页面嵌在预览面板的 iframe 中被浏览器拦截。这是最常见的情况，按下面步骤放行后重试即可。', steps:COMMON_STEPS };
+  if(n==='NotFoundError' || n==='DevicesNotFoundError' || n==='OverconstrainedError')
+    return { title:'找不到可用的输入设备',
+      reason:'没有检测到麦克风，或之前指定的设备已拔出/被禁用。请先确认 Windows 两个总开关已打开，再在下方重新选择设备。',
+      steps:[COMMON_STEPS[0], COMMON_STEPS[3], COMMON_STEPS[1], '在下方下拉里选择设备后点「用所选设备重试」。'] };
+  if(n==='NotReadableError' || n==='TrackStartError' || n==='AbortError')
+    return { title:'麦克风被占用或启动失败',
+      reason:'设备可能正被其它程序独占，或驱动尚未就绪。', steps:[COMMON_STEPS[4], COMMON_STEPS[0], COMMON_STEPS[2]] };
+  return { title:'无法打开麦克风',
+    reason: esc((err && err.message) || String(err) || '未知原因'),
+    steps:COMMON_STEPS };
+}
+const MicDiag = {
+  async show(info, tag){
+    const panel = $('#micDiag');
+    // 提升到 body，保证在训练弹窗（z-index 80）之上也能看见
+    if(panel.parentNode !== document.body) document.body.appendChild(panel);
+    $('#diagTitle').textContent = info.title;
+    $('#diagReason').innerHTML = info.reason;
+    $('#diagSteps').innerHTML = info.steps.map(s=>'<li>'+s+'</li>').join('');
+    $('#diagEnv').innerHTML = '运行环境：检测中…';
+    updateDiagLocal();
+    panel.hidden = false;                       // 先显示，异步信息后补，避免权限查询卡住
+    this.tag = tag || 'error';
+    micEnvText().then(t=>{ if(!panel.hidden) $('#diagEnv').innerHTML = t; }).catch(()=>{});
+    this.refreshDevices().catch(()=>{});
+  },
+  hide(){ $('#micDiag').hidden = true; },
+  async refreshDevices(){
+    const sel = $('#diagDevice');
+    if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices){
+      sel.innerHTML = '<option value="">此浏览器不支持设备枚举</option>'; return;
+    }
+    try{
+      const list = await Promise.race([
+        navigator.mediaDevices.enumerateDevices(),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('设备枚举超时')),1500))
+      ]);
+      const inputs = list.filter(d=>d.kind==='audioinput');
+      if(!inputs.length){
+        sel.innerHTML = '<option value="">未检测到输入设备（授权后才会显示名称）</option>'; return;
+      }
+      const saved = micSavedDevice();
+      sel.innerHTML = inputs.map((d,i)=>{
+        const label = d.label || ('麦克风 '+(i+1)+'（未授权，名称被浏览器隐藏）');
+        const virtual = /ToDesk|Virtual|VB-CABLE|虚拟|CABLE/i.test(label);
+        return '<option value="'+esc(d.deviceId)+'">'+esc(label)
+          + (d.deviceId==='default'?' · 系统默认':'')
+          + (virtual?' · ⚠ 虚拟设备，通常无真实输入':'') + '</option>';
+      }).join('');
+      if(saved && Array.from(sel.options).some(o=>o.value===saved)) sel.value=saved;
+    }catch(e){ sel.innerHTML = '<option value="">设备枚举失败：'+esc(e.message||e)+'</option>'; }
+  }
+};
+$('#diagClose').addEventListener('click', ()=>MicDiag.hide());
+$('#trainDiagBtn').addEventListener('click', openDeviceDiag);
+$('#diagSim').addEventListener('click', ()=>{ MicDiag.hide(); if(state.mode==='mic') setMode('sim'); });
+$('#diagOpen').addEventListener('click', ()=>{
+  const url = localStandaloneUrl();
+  const w = window.open(url, '_blank', 'noopener');
+  if(!w) toast('弹窗被拦截，请手动在浏览器地址栏输入：' + url, 6000);
+  else toast('已在新窗口打开 ' + url + '，请在那个窗口允许麦克风', 5200);
+});
+$('#diagCopy').addEventListener('click', async ()=>{
+  const url = localStandaloneUrl();
+  try{
+    await navigator.clipboard.writeText(url);
+    toast('已复制：' + url + '，粘贴到独立浏览器窗口即可', 4600);
+  }catch(e){
+    toast('请手动输入：' + url, 6000);
+  }
+});
+$('#diagRetry').addEventListener('click', async ()=>{
+  const v = $('#diagDevice').value;
+  try{ if(v) localStorage.setItem('sonora.micDevice', v); else localStorage.removeItem('sonora.micDevice'); }catch(e){}
+  MicDiag.hide();
+  if(MIC.active) stopMic();
+  state.mode='sim'; state.busy=false; updateModeUI();
+  await setMode('mic');
+});
+function openDeviceDiag(){
+  MicDiag.show({
+    title:'麦克风设备与输入电平',
+    reason:'可以在这里切换输入设备。若识别一直没反应，多半是选中了虚拟声卡或设备被静音。',
+    steps:[
+      '当前输入电平会显示在左下角「能量」条上；对着麦克风说话时应明显跳动。',
+      '换设备后点「用所选设备重试」，页面会记住这次选择。',
+      '若系统默认设备是 ToDesk Virtual Audio，请在「设置 → 系统 → 声音 → 输入」里改回真实麦克风。'
+    ]
+  }, 'manual');
+}
+
+/* --- 麦克风开关 --- */
+async function startMic(){
+  if(MIC.active) return true;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    toast('当前环境不支持麦克风采集，请用 Chrome / Edge 通过 localhost 或 https 打开', 5000);
+    MicDiag.show({
+      title:'当前环境不支持麦克风采集',
+      reason:'浏览器未暴露 getUserMedia。通常是页面以 file:// 打开、或使用了过旧/受限的内嵌浏览器。',
+      steps:['用独立 Chrome / Edge 窗口打开 http://127.0.0.1:5000/（先运行 start_server.bat）。',
+             '如必须用本地文件，请确认浏览器允许 file:// 使用设备。',
+             '确认地址是 localhost 或 https（安全上下文）。']
+    }, 'unsupported');
+    return false;
+  }
+  const saved = micSavedDevice();
+  const audio = { echoCancellation:false, noiseSuppression:false, autoGainControl:false };
+  if(saved) audio.deviceId = { exact: saved };
+  try{
+    MIC.stream = await navigator.mediaDevices.getUserMedia({ audio, video:false });
+  }catch(err){
+    const info = micErrorInfo(err);
+    toast(info.title + ' · 已打开诊断面板', 4200);
+    MicDiag.show(info, 'error');
+    if(err && err.name==='OverconstrainedError'){
+      try{ localStorage.removeItem('sonora.micDevice'); }catch(e){}
+    }
+    return false;
+  }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC){
+    toast('当前浏览器不支持 Web Audio，无法分析麦克风数据',4600);
+    MIC.stream.getTracks().forEach(t=>t.stop()); MIC.stream=null;
+    return false;
+  }
+  // 默认输入若是虚拟声卡（ToDesk / VB-Cable / VoiceMeeter 等），自动换到真实麦克风
+  MIC.autoSwitched = '';
+  if(!saved && isVirtualMic((MIC.stream.getAudioTracks()[0]||{}).label)){
+    const alt = await pickRealMic();
+    if(alt){
+      try{
+        const st2 = await navigator.mediaDevices.getUserMedia({
+          audio:{ deviceId:{exact:alt}, echoCancellation:false, noiseSuppression:false, autoGainControl:false },
+          video:false });
+        MIC.stream.getTracks().forEach(t=>t.stop());
+        MIC.stream = st2;
+        MIC.autoSwitched = (st2.getAudioTracks()[0]||{}).label || '真实麦克风';
+      }catch(e){ console.warn('自动切换真实麦克风失败：', e); }
+    }
+  }
+  MIC.actx = new AC();
+  try{ await MIC.actx.resume(); }catch(e){}
+  MIC.src = MIC.actx.createMediaStreamSource(MIC.stream);
+  MIC.analyser = MIC.actx.createAnalyser();
+  MIC.analyser.fftSize = 2048;
+  MIC.analyser.smoothingTimeConstant = .72;
+  MIC.src.connect(MIC.analyser);                 // 不连 destination，避免啸叫
+  MIC.time = new Float32Array(MIC.analyser.fftSize);
+  MIC.freq = new Uint8Array(MIC.analyser.frequencyBinCount);
+  MIC.noise=.006; MIC.lastEvent=0; MIC.inEvent=false; MIC.rms=0;
+  MIC.ring=[]; MIC.capture=null; MIC.proc=null;
+  // 启动后先做 900ms 噪声底标定：拿到真实环境的底噪，避免阈值写死导致「永远不触发」
+  MIC.calibUntil = performance.now()+900; MIC.calibSamples=[]; MIC.peak=0; MIC.levelAt=0;
+
+  // 连续 PCM 采集（无重叠），供 WAV 打包上传训练 / 后端分析；mute 节点避免回放啸叫
+  try{
+    if(MIC.actx.createScriptProcessor){
+      const proc=MIC.actx.createScriptProcessor(4096,1,1);
+      const mute=MIC.actx.createGain(); mute.gain.value=0;
+      proc.onaudioprocess = e=>{
+        if(!MIC.active) return;
+        const chunk=Float32Array.from(e.inputBuffer.getChannelData(0));
+        MIC.ring.push(chunk);
+        const maxBlocks=Math.ceil(2*MIC.actx.sampleRate/chunk.length);
+        if(MIC.ring.length>maxBlocks) MIC.ring.splice(0,MIC.ring.length-maxBlocks);
+        if(MIC.capture) MIC.capture.push(chunk);
+      };
+      MIC.src.connect(proc); proc.connect(mute); mute.connect(MIC.actx.destination);
+      MIC.proc=proc; MIC.mute=mute;
+    }
+  }catch(e){ console.warn('连续 PCM 采集不可用，改用 Analyser 帧：',e); }
+  MIC.active=true;
+  startSilentWatch();
+  const track = MIC.stream.getAudioTracks()[0];
+  MIC.deviceLabel = (track && track.label) || (saved ? '指定设备' : '系统默认设备');
+  if(MIC.autoSwitched){
+    toast('默认输入是虚拟声卡，已自动切换到「' + MIC.autoSwitched + '」', 5600);
+  }else if(!saved && isVirtualMic(MIC.deviceLabel)){
+    toast('当前输入「' + MIC.deviceLabel + '」是虚拟声卡，通常收不到真实声音。请点「设备诊断」换设备。', 6200);
+  }
+  MicDiag.refreshDevices();          // 授权后设备才有真实名称
+  return true;
+}
+/* 数字静音看门狗：独立于 rAF，后台标签页也能判断；选中虚拟声卡时主动提示 */
+function startSilentWatch(){
+  clearInterval(MIC.silentTimer);
+  MIC.silentSince=performance.now(); MIC.warnedSilent=false; MIC.lastFrameAt=performance.now();
+  MIC.silentTimer=setInterval(()=>{
+    if(!MIC.active) return;
+    const now=performance.now();
+    if(now-(MIC.lastFrameAt||0)>2000) return;        // 没有新帧（标签页挂起）时不误报
+    if(MIC.rms>=.0004){ MIC.silentSince=now; return; }
+    if(MIC.warnedSilent || now-MIC.silentSince<5000) return;
+    MIC.warnedSilent=true;
+    MicDiag.show({
+      title:'已连接，但没有采集到声音',
+      reason:'输入电平连续 5 秒为 0。通常是选中了虚拟声卡（如 ToDesk Virtual Audio）、设备被静音或输入音量为 0，此时识别不会有任何反应。',
+      steps:['在下方选择「阵列麦克风」等真实设备，再点「用所选设备重试」。',
+             'Windows：设置 → 系统 → 声音 → 输入，把真实麦克风设为默认设备并检查音量。',
+             '说话时左下角「能量」条应明显跳动；若只是环境安静，可忽略本提示。']
+    },'silent');
+  },1000);
+}
+function stopMic(){
+  clearInterval(MIC.silentTimer); MIC.silentTimer=null;
+  if(MIC.stream) MIC.stream.getTracks().forEach(t=>t.stop());
+  if(MIC.actx) { try{ MIC.actx.close(); }catch(e){} }
+  try{ if(MIC.proc){ MIC.proc.disconnect(); MIC.proc.onaudioprocess=null; } }catch(e){}
+  try{ if(MIC.mute) MIC.mute.disconnect(); }catch(e){}
+  MIC.active=false; MIC.inEvent=false; MIC.time=null; MIC.freq=null; MIC.feat=null;
+  MIC.ring=[]; MIC.capture=null; MIC.proc=null; MIC.mute=null;
+  MIC.stream=null; MIC.actx=null; MIC.analyser=null; MIC.src=null;
+}
+function updateModeUI(){
+  $('#modeSim').setAttribute('aria-pressed', String(state.mode==='sim'));
+  $('#modeMic').setAttribute('aria-pressed', String(state.mode==='mic'));
+  $('#fireBtn').innerHTML = (state.mode==='mic'?'识别当前声音':'模拟触发') + ' <kbd>Space</kbd>';
+  $('#fireBtn').title = state.mode==='mic'
+    ? '立即把刚才 1.2 秒的麦克风声音送去识别（与自动检测走同一条链路）'
+    : '模拟一次识别命中，用于路演演示';
+}
+async function setMode(mode){
+  if(mode===state.mode || pendingMic) return;
+  if(recording && mode!=='mic'){ toast('正在录制样本，请先完成录制'); return; }
+  state.busy=false;                              // 切换时清掉可能残留的识别中状态
+  if(mode==='mic'){
+    if(recording){ toast('正在录制样本，请先完成录制'); return; }
+    // 授权期间先停掉自动演示，避免「听」状态与权限提示叠在一起
+    const prevAuto=state.auto, prevChecked=$('#autoToggle').checked;
+    state.auto=false; $('#autoToggle').checked=false;
+    pendingMic=true;
+    const ok = await startMic();
+    pendingMic=false;
+    if(!ok){
+      state.auto=prevAuto; $('#autoToggle').checked=prevChecked;
+      state.busy=false; setStatus('idle');       // 失败必须复位，不能卡在「听」
+      updateModeUI();
+      return;
+    }
+    state.mode='mic';
+    state.autoBeforeMic = prevChecked;
+    state.auto=false; $('#autoToggle').checked=false;
+    $('#autoWrap').classList.add('disabled');
+    $('#stage').classList.add('mic-on');
+    $('#syncLabel').textContent='MIC LIVE · '+(MIC.actx.sampleRate/1000).toFixed(1)+'kHz';
+    const trainedCount = TEMPLATES.filter(t=>t.trained).length;
+    $('#micNote').innerHTML = esc((MIC.deviceLabel||'默认设备').slice(0,22)) + ' · '
+      + '<b id="micLevel" class="num">-- dBFS</b> · '
+      + (trainedCount ? trainedCount+' 个已训练模板' : '内置样例原型')
+      + ' <button class="link-btn" id="diagInlineBtn">设备诊断</button>';
+    $('#diagInlineBtn').addEventListener('click', openDeviceDiag);
+    $('#liveText').textContent='本机麦克风 · 实时采集';
+    setStatus('idle');
+    toast('麦克风已连接 · 发声即可自动识别，也可点「识别当前声音」立即采样', 5200);
+  }else{
+    stopMic();
+    state.mode='sim';
+    state.auto=state.autoBeforeMic;
+    $('#autoToggle').checked=state.auto;
+    $('#autoWrap').classList.remove('disabled');
+    $('#stage').classList.remove('mic-on');
+    $('#syncLabel').textContent='OLED 同步';
+    $('#micNote').textContent='切换「本机麦克风」后，对着电脑说话即可实时识别';
+    $('#liveText').textContent='硬件已连接 · 呼吸静';
+    energy=.08;
+    setStatus('idle');
+  }
+  updateModeUI();
+}
+$('#modeMic').addEventListener('click', ()=>setMode('mic'));
+$('#modeSim').addEventListener('click', ()=>setMode('sim'));
+
+/* --- 实时帧与声音事件检测 --- */
+function readMicFrame(){
+  if(!MIC.analyser || !MIC.time) return;
+  if(MIC.analyser.getFloatTimeDomainData) MIC.analyser.getFloatTimeDomainData(MIC.time);
+  else{
+    const b=new Uint8Array(MIC.analyser.fftSize);
+    MIC.analyser.getByteTimeDomainData(b);
+    for(let i=0;i<b.length;i++) MIC.time[i]=(b[i]-128)/128;
+  }
+  MIC.analyser.getByteFrequencyData(MIC.freq);
+  const sr = (MIC.actx && MIC.actx.sampleRate) || 48000;
+  let s=0; for(let i=0;i<MIC.time.length;i++) s+=MIC.time[i]*MIC.time[i];
+  MIC.rms=Math.sqrt(s/MIC.time.length);
+  MIC.lastFrameAt=performance.now();
+  MIC.feat=extractFeatures(MIC.time, sr);
+  if(SSC) SS.feed(MIC.time, sr, 16);                // 13 类规则识别的帧特征
+  if(!MIC.proc){                                    // 无 ScriptProcessor 时用分析帧兜底
+    MIC.ring.push(MIC.time.slice());
+    const maxBlocks=Math.ceil(2*sr/MIC.time.length);
+    if(MIC.ring.length>maxBlocks) MIC.ring.splice(0,MIC.ring.length-maxBlocks);
+    if(MIC.capture) MIC.capture.push(MIC.time.slice());
+  }
+}
+function micLevelText(rms){
+  const db = 20*Math.log10(Math.max(rms, 1e-7));
+  return (db>-99 ? db.toFixed(0) : '--') + ' dBFS';
+}
+function micDetect(ts){
+  if(!MIC.active) return;
+
+  /* ---- 看门狗：防止 state.busy / MIC.inEvent 卡死 ----
+     这两面旗子任何一面卡住，micDetect 都会在下面提前 return，
+     表现为「听」字永远不动、事件永远不结束。这里无条件兜底。 */
+  if(MIC.inEvent && (ts - (MIC.eventStart||ts)) > 3000){
+    MIC.inEvent = false;
+    state.busy = false;
+    MIC.lastEvent = ts;
+    try {
+      if(MIC.frames && MIC.frames.length){
+        recognizeFrames(MIC.frames.slice(), collectRecentPCM(.8), 'mic', SS.f);
+      } else {
+        setStatus('idle');
+      }
+    } catch(e){
+      console.warn('看门狗兜底失败：', e);
+      setStatus('idle');
+    }
+    MIC.frames = [];
+  }
+  if(state.busy && !MIC.inEvent){
+    MIC.busyFrames = (MIC.busyFrames||0) + 1;
+    if(MIC.busyFrames > 300){            // 约 5 秒 @60fps
+      MIC.busyFrames = 0;
+      state.busy = false;
+      setStatus('idle');
+    }
+  } else {
+    MIC.busyFrames = 0;
+  }
+
+  // 实时电平回显：先判断「设备到底有没有采到声音」，再谈识别
+  const nowMs = performance.now();
+  if(nowMs - (MIC.levelAt||0) > 240){
+    MIC.levelAt = nowMs;
+    const txt = micLevelText(MIC.rms);
+    const lv = $('#micLevel'); if(lv) lv.textContent = txt;
+    if(state.mode==='mic' && MIC.actx){
+      const sl = $('#syncLabel');
+      if(sl) sl.textContent = 'MIC LIVE · ' + (MIC.actx.sampleRate/1000).toFixed(1) + 'kHz · ' + txt;
+    }
+  }
+  if(recording || !trainModal.hidden) return;
+  // 关键：不能用 state.busy 一刀切拦掉。
+  // 事件一开始就把 busy 置 true，如果这里直接 return，下面「结束事件」的分支
+  // 就永远走不到，界面会永远停在「听」。只挡"开新事件"，不挡"收尾"。
+  if(state.busy && !MIC.inEvent) return;
+
+  // 噪声底标定：取启动后 900ms 内电平的 80 分位，避免偶发咔哒声抬高底噪
+  if(MIC.calibUntil){
+    if(ts < MIC.calibUntil){ MIC.calibSamples.push(MIC.rms); return; }
+    const arr = MIC.calibSamples.filter(v=>v>0).sort((a,b)=>a-b);
+    if(arr.length){
+      const p80 = arr[Math.min(arr.length-1, Math.floor(arr.length*0.8))];
+      MIC.noise = clamp(p80*1.15, .0012, .06);
+    }
+    MIC.calibUntil = 0; MIC.calibSamples = [];
+  }
+
+  // 相对阈值（随麦克风增益同步缩放）+ 绝对下限，低音量设备也能触发
+  const thr = clamp(MIC.noise*2.2, .0042, .09);
+  const loud = MIC.rms > thr;
+  MIC.peak = Math.max(MIC.rms, (MIC.peak||0)*.999);
+
+  if(!loud) MIC.noise = MIC.noise*.97 + MIC.rms*.03;
+  else      MIC.noise = MIC.noise*.999 + MIC.rms*.001;
+
+  if(loud && !MIC.inEvent && ts - MIC.lastEvent > 1500){
+    MIC.inEvent=true; MIC.frames=[]; MIC.eventStart=ts;
+    state.busy=true;
+    setStatus('listening');
+  }
+  if(MIC.inEvent){
+    if(loud) MIC.frames.push(MIC.feat.slice());
+    if(ts - MIC.eventStart > 620 || (MIC.frames.length>6 && !loud)){
+      try{ finishMicEvent(ts); }
+      catch(e){                                   // 任何异常都必须复位，否则后续识别全被 busy 卡死
+        console.warn('实时识别失败：', e);
+        MIC.inEvent=false; state.busy=false; setStatus('idle');
+      }
+    }
+  }
+}
+function localClassify(avg){
+  const res=classify(avg);
+  if(res.t && res.conf>=MATCH_THRESHOLD) applyHit(res.t,res.conf,'mic');
+  else noteUnknown(res.conf, avg);
+}
+/* 训练库匹配：liveVec 来自「本次事件 PCM」重建的稳定指纹（与训练时同源），
+   不再用含环境噪声的全局 SS.f，否则永远对不上。阈值放宽到 0.30 容忍设备/房间差异。
+   匹配时屏蔽 pitchConf(7) 与 flux(9) 两个对设备/噪声极敏感、同声音也会剧烈抖动的维度，
+   只比稳定的谱形维度，否则换设备/加噪后必失配。训练与实时同源处理。 */
+const MATCH_MASK = [1,1,1,1,1,1,1,0,1,0,1];
+function maskVec(v){ return (v||[]).map((x,i)=>x*((MATCH_MASK&&MATCH_MASK[i])||0)); }
+function matchCustomTemplates(liveVec){
+  if(!SSC) return null;
+  const v = liveVec ? maskVec(liveVec) : (SS.f ? maskVec(SSC.vecOfStable(SS.f)) : null);
+  if(!v) return null;
+  const list=TEMPLATES.filter(t=>t.enabled!==false && t.vecs && t.vecs.length)
+    .map(t=>({key:t.id,name:t.name,cat:t.cat||'env',vecs:t.vecs.map(maskVec),enabled:t.enabled,template:t}));
+  const hit=SSC.matchVecs(v,list,0.30);
+  if(!hit) return null;
+  return { t:hit.template, conf:hit.conf*100, key:hit.key, cat:hit.cat };
+}
+function ruleHit(rule){
+  const s=SSC && SSC.SOUND_MAP[rule.key];
+  if(!s) return false;
+  const t={ id:'rule_'+s.key, name:s.name, count:0, cat:s.cat, region:s.region, icon:s.icon,
+            bars:[8,16,12,20,10], prototype:new Array(7).fill(0), hitCount:0 };
+  applyHit(t, clamp(rule.conf*100,0,99), 'rule');
+  if(SSC) SS.show(s, rule.conf);
+  return true;
+}
+function fallbackLocal(avg, rule, custom){
+  if(rule && rule.key){
+    if(custom && rule.key===custom.key && custom.t) applyHit(custom.t, rule.conf*100, 'mic');
+    else if(ruleHit(rule)) return;
+  }
+  localClassify(avg);
+}
+function finishMicEvent(ts){
+  MIC.inEvent=false; MIC.lastEvent=ts;
+  recognizeFrames(MIC.frames.slice(), collectRecentPCM(.8), 'mic', SS.f);
+}
+
+/* 统一的识别入口：自动检测与「识别当前声音」按钮共用同一条链路
+   策略：本地优先、毫秒级显示，不再被后端请求/同步阻塞或覆盖。
+   优先级：训练库多样本（事件 PCM 同源指纹）→ 13 类规则 → 本地 7 维 → 未知 */
+function recognizeFrames(frames, pcm, source, ssState){
+  const sr = MIC.actx ? MIC.actx.sampleRate : 16000;
+  const fr = (frames && frames.length) ? frames.slice() : (MIC.feat ? [MIC.feat.slice()] : []);
+  if(!fr.length){ state.busy=false; setStatus('idle'); return; }
+  fr.sort((a,b)=>b[6]-a[6]);                       // 按响度排序
+  // 只取「最响的那一批」帧。原来取前 60%，会把事件尾巴上的弱帧和底噪一起
+  // 平均进去，特征被拉向「安静」一侧，跟模板差得远，永远过不了阈值。
+  const peakEnergy = fr[0][6] || 0;
+  let keep = fr.filter(f => f[6] >= peakEnergy * 0.5);
+  if(!keep.length) keep = [fr[0]];
+  if(keep.length > 12) keep = keep.slice(0, 12);
+  const avg=new Array(7).fill(0);
+  keep.forEach(f=>f.forEach((v,i)=>avg[i]+=v/keep.length));
+
+  // 用「本次事件的 PCM」重建稳定指纹与分类状态 —— 与训练时同源，避免环境噪声污染
+  const evtPCM = (pcm && pcm.length>=2048) ? pcm : collectRecentPCM(.8);
+  const liveVec = ssVecFromPCM(evtPCM, sr);
+  const st = ssStateFromPCM(evtPCM, sr) || ssState || SS.f;
+  const custom = matchCustomTemplates(liveVec);
+  const rule = SSC && st
+    ? SSC.classifySS(st, custom ? {key:custom.key,conf:custom.conf/100,cat:custom.cat} : null)
+    : null;
+
+  // 本地优先显示（即时，不依赖后端；后端只用于自检/模板同步，不再卡住实时识别）
+  if(DBG){
+    const lc = classify(avg);
+    dbgShow({ avg, best: lc.t && lc.t.name, d: lc.d, conf: lc.conf,
+              thr: MATCH_THRESHOLD, custom: custom && custom.conf, rule: rule && rule.key });
+  }
+  if(custom && custom.conf>=70){ applyHit(custom.t, custom.conf, source||'mic'); return; }
+  if(rule && rule.key && rule.conf>=0.58){ if(ruleHit(rule)) return; }
+  localClassify(avg);
+}
+
+/* --- 手动识别：采样最近一段真实音频，而不是伪造命中 --- */
+function pcmStats(pcm){
+  let s=0, peak=0;
+  for(let i=0;i<pcm.length;i++){ const v=pcm[i]; s+=v*v; if(Math.abs(v)>peak) peak=Math.abs(v); }
+  const rms = Math.sqrt(s/Math.max(1,pcm.length));
+  return { rms, peak, dbfs: 20*Math.log10(Math.max(rms,1e-7)) };
+}
+function framesFromPCM(pcm, sr){
+  const N=2048, hop=1024, raw=[];
+  for(let off=0; off+N<=pcm.length; off+=hop){
+    const frame=pcm.subarray(off,off+N);
+    let s=0; for(let i=0;i<N;i++) s+=frame[i]*frame[i];
+    const rms=Math.sqrt(s/N);
+    if(rms < .0018) continue;
+    raw.push({ f:extractFeatures(frame, sr), rms });
+    if(raw.length>=40) break;
+  }
+  if(!raw.length) return [];
+  const cut = Math.max(.0018, Math.max(...raw.map(x=>x.rms))*.45);
+  const loudFrames = raw.filter(x=>x.rms>=cut);
+  return (loudFrames.length?loudFrames:raw).map(x=>x.f);
+}
+/* 用本次采样的 PCM 重建一份平滑状态，避免把「刚才的静音」平滑进分类结果 */
+function ssStateFromPCM(pcm, sr){
+  if(!SSC || !pcm || pcm.length<2048) return null;
+  try{
+    const an=new SSC.SSAnalyzer(sr,2048), sf=SSC.newSmooth();
+    const N=2048, hop=1024;
+    for(let off=0; off+N<=pcm.length; off+=hop){
+      SSC.smooth(sf, an.process(pcm.subarray(off,off+N)), hop/sr*1000);
+    }
+    return sf;
+  }catch(e){ return null; }
+}
+function micForceRecognize(){
+  if(recording){ toast('正在录制样本，请先完成录制'); return; }
+  if(!trainModal.hidden){ toast('训练工作台打开中，关闭后再点「识别当前声音」'); return; }
+  if(!MIC.active){
+    toast('麦克风尚未连接，正在尝试连接…', 3000);
+    state.mode = 'sim';                       // 让 setMode 真正走一次初始化
+    Promise.resolve(setMode('mic')).then(()=>{ if(MIC.active) setTimeout(micForceRecognize, 500); });
+    return;
+  }
+  if(state.busy) return;
+
+  const sr = MIC.actx ? MIC.actx.sampleRate : 16000;
+  const pcm = collectRecentPCM(1.2);
+  const spec = pcmStats(pcm);
+
+  // 电平过低：先说清「为什么没识别」，而不是假装命中
+  if(spec.rms < .0032){
+    state.busy=false;
+    setStatus('idle');
+    toast('输入电平 ' + spec.dbfs.toFixed(0) + ' dBFS —— 几乎没采到声音。当前设备：'
+          + (MIC.deviceLabel||'系统默认') + '，请确认不是虚拟声卡且系统输入音量不为 0。', 7200);
+    showSilentDiag(spec);
+    return;
+  }
+
+  state.busy=true;
+  setStatus('listening');
+  const frames = framesFromPCM(pcm, sr);
+  const ssState = ssStateFromPCM(pcm, sr) || SS.f;
+  if(SSC && ssState) SS.f = ssState;
+  setTimeout(()=>{
+    if(!MIC.active){ state.busy=false; setStatus('idle'); return; }
+    try{ recognizeFrames(frames, pcm, 'mic', ssState); }
+    catch(e){ console.warn('手动识别失败：', e); state.busy=false; setStatus('idle'); toast('识别过程出错，已复位', 3600); }
+  }, 260 + Math.random()*200);
+}
+function showSilentDiag(spec){
+  MicDiag.show({
+    title:'没有采集到有效声音',
+    reason:'这次采样只有 <b>' + spec.dbfs.toFixed(0) + ' dBFS</b>（峰值 ' + spec.peak.toFixed(4)
+      + '），低于可识别下限。最常见的原因是选中了虚拟声卡、设备被静音或输入音量为 0。',
+    steps:['在下方选择真实设备（如「阵列麦克风」），点「用所选设备重试」。',
+           'Windows：设置 → 系统 → 声音 → 输入，把真实麦克风设为默认设备并调高音量。',
+           '对着麦克风说话，面板左下角「能量」条与 dBFS 读数应明显跳动，再点「识别当前声音」。']
+  }, 'silent');
+}
+
+/* ==================== 训练工作台：录制 / 上传 / 平均 / 保存 ==================== */
+function refreshTargetOptions(keep){
+  const sel=$('#trainTarget');
+  sel.innerHTML = TEMPLATES.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}${t.trained?' · 已训练':''}</option>`).join('')
+                + '<option value="__new">＋ 新建模板…</option>';
+  if(keep) sel.value=keep;
+  $('#targetCount').textContent = '· 共 '+TEMPLATES.length+' 个，点开可切换 / 新建';
+  $('#newNameField').hidden = sel.value!=='__new';
+}
+function currentAvg(){
+  if(!TRAIN_SAMPLES.length) return null;
+  const a=new Array(7).fill(0);
+  TRAIN_SAMPLES.forEach(s=>s.feat.forEach((v,i)=>a[i]+=v/TRAIN_SAMPLES.length));
+  return a;
+}
+function consistency(avg){
+  if(TRAIN_SAMPLES.length<2 || !avg) return null;
+  let d=0; TRAIN_SAMPLES.forEach(s=>d+=featureDistance(s.feat,avg));
+  return clamp(100-(d/TRAIN_SAMPLES.length)*260,0,100);
+}
+function renderFeatBars(){
+  const avg=currentAvg();
+  $('#featBars').innerHTML = FEAT_NAMES.map((n,i)=>`
+    <div class="feat-row"><span>${n}</span>
+      <span class="feat-track"><span class="feat-fill" style="width:${avg?Math.round(clamp(avg[i],0,1)*100):0}%"></span></span>
+      <span class="fval">${avg?avg[i].toFixed(2):'—'}</span></div>`).join('');
+  const c=consistency(avg);
+  $('#consistBox').innerHTML = c===null
+    ? '样本一致性：—<br>采集 2 段以上可评估稳定性。'
+    : '样本一致性：<b>'+c.toFixed(0)+'%</b> · 共 '+TRAIN_SAMPLES.length+' 段<br>'
+      + (c>78?'特征稳定，适合保存。':'建议再录几段，减少环境差异。');
+}
+function updateTrainStatus(){
+  const n=TRAIN_SAMPLES.length;
+  $('#saveBtn').disabled = n===0;
+  $('#trainStatus').innerHTML = n===0
+    ? '等待样本 · 1 段即可生成声纹，建议 3 段以上更稳定。'
+    : '已采集 <b>'+n+'</b> 段样本 · 平均时长 '
+      + (TRAIN_SAMPLES.reduce((a,s)=>a+(s.duration||0),0)/n).toFixed(1)
+      + 's<br>点击「取平均并保存模板」写入声纹库。';
+  $('#useUnknownBtn').hidden = !lastUnknownFeat;
+}
+function renderSamples(){
+  const box=$('#sampleList');
+  if(!TRAIN_SAMPLES.length){
+    box.innerHTML='<span class="sub" style="margin:0">尚无样本，先录一段或上传音频</span>';
+  }else{
+    box.innerHTML=TRAIN_SAMPLES.map(s=>`
+      <div class="sample">
+        <span class="sbars" aria-hidden="true">${s.envelope.slice(0,12).map(v=>`<i style="height:${Math.max(3,Math.round(clamp(v,0,1)*18))}px"></i>`).join('')}</span>
+        <span class="sname">${esc(s.name)}</span>
+        ${s.blob?`<button class="sdel" data-dl="${s.id}" title="下载这段音频" aria-label="下载 ${esc(s.name)}">↓</button>`:''}
+        <button class="sdel" data-del="${s.id}" aria-label="删除样本 ${esc(s.name)}">×</button>
+      </div>`).join('');
+    $$('#sampleList [data-del]').forEach(b=>b.addEventListener('click',()=>{
+      const i=TRAIN_SAMPLES.findIndex(x=>x.id===b.dataset.del);
+      if(i>=0) TRAIN_SAMPLES.splice(i,1);
+      renderSamples();
+    }));
+    $$('#sampleList [data-dl]').forEach(b=>b.addEventListener('click',()=>{
+      const s=TRAIN_SAMPLES.find(x=>x.id===b.dataset.dl);
+      if(!s || !s.blob) return;
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(s.blob);
+      a.download=s.name.replace(/\.[^.]+$/,'')+'.'+(s.ext||'webm');
+      a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    }));
+  }
+  renderFeatBars(); updateTrainStatus();
+}
+function addSample(s){
+  s.id='s'+(++trainSeq)+'_'+Date.now();
+  TRAIN_SAMPLES.push(s);
+  renderSamples();
+}
+
+async function decodeBlob(blob){
+  const AC=window.AudioContext||window.webkitAudioContext;
+  const own = !MIC.actx;
+  const ac = MIC.actx || new AC();
+  try{
+    const buf=await blob.arrayBuffer();
+    const audio=await ac.decodeAudioData(buf.slice(0));
+    const ch=audio.getChannelData(0);
+    const maxN=Math.floor(audio.sampleRate*2);
+    const pcm=ch.length>maxN ? ch.slice(0,maxN) : Float32Array.from(ch);
+    return Object.assign(featuresFromPCM(ch,audio.sampleRate),
+                         { pcm, sampleRate:audio.sampleRate });
+  }finally{ if(own){ try{ ac.close(); }catch(e){} } }
+}
+async function recordSample(){
+  if(recording) return;
+  if(!MIC.active){ await setMode('mic'); if(!MIC.active) return; }
+  if(typeof MediaRecorder==='undefined'){ toast('当前浏览器不支持录音，请改用「上传音频文件」',4200); return; }
+  recording=true;
+  const btn=$('#recBtn');
+  btn.classList.add('rec-on'); btn.disabled=true; btn.textContent='● 录制中 1.5s…';
+  const live=[];                                  // 录音期间同步留存的实时特征帧
+  MIC.capture=[];                                 // 连续 PCM（无重叠）
+  const grab=setInterval(()=>{ if(MIC.feat && MIC.rms>.006) live.push({f:MIC.feat.slice(),rms:MIC.rms}); },50);
+  let blob=null;
+  try{
+    const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'';
+    const rec=new MediaRecorder(MIC.stream, mime?{mimeType:mime}:undefined);
+    const chunks=[];
+    rec.ondataavailable=e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+    const done=new Promise(res=>{ rec.onstop=res; });
+    rec.start();
+    await new Promise(r=>setTimeout(r,1500));
+    rec.stop(); await done;
+    blob=new Blob(chunks,{type:rec.mimeType||'audio/webm'});
+    const sr=MIC.actx ? MIC.actx.sampleRate : 16000;
+    let pcm=concatPCM(MIC.capture);
+    if(!pcm.length) pcm=collectRecentPCM(1.5);
+    const pack=wavFromPCM(pcm,sr);
+    const wav=pack.wav;
+    const ssVec=ssVecFromPCM(pcm,sr);
+    let info;
+    try{
+      info=await decodeBlob(blob);               // 首选：解码完整录音
+    }catch(err){
+      if(!live.length) throw err;
+      live.sort((a,b)=>b.rms-a.rms);             // 回退：实时帧均值
+      const keep=live.slice(0,Math.max(1,Math.ceil(live.length*.6)));
+      const feat=new Array(7).fill(0);
+      keep.forEach(x=>x.f.forEach((v,i)=>feat[i]+=v/keep.length));
+      info={ feat, envelope:new Array(48).fill(0).map((_,i)=>clamp(feat[i%7]*.8,0,1)), duration:1.5 };
+      toast('录音格式不支持解码，已改用实时特征完成采集',4200);
+    }
+    addSample({ name:'录音 '+(TRAIN_SAMPLES.length+1), feat:info.feat, envelope:info.envelope,
+                blob, duration:info.duration, wav, sampleRate:pack.sampleRate, vec:ssVec,
+                ext:blob.type.includes('ogg')?'ogg':'webm' });
+    toast('已采集一段录音 · 共 '+TRAIN_SAMPLES.length+' 段样本');
+  }catch(e){ toast('录制失败：'+((e&&e.message)||e),4200); }
+  finally{
+    clearInterval(grab);
+    MIC.capture=null;
+    recording=false;
+    btn.classList.remove('rec-on'); btn.disabled=false; btn.textContent='● 录制 1.5 秒';
+  }
+}
+async function handleFiles(list){
+  const files=Array.from(list||[]);
+  if(!files.length) return;
+  let ok=0;
+  for(const f of files){
+    try{
+      const info=await decodeBlob(f);
+      const pack=wavFromPCM(info.pcm,info.sampleRate);
+      addSample({ name:f.name.length>12?f.name.slice(0,11)+'…':f.name,
+                  feat:info.feat, envelope:info.envelope, blob:f, duration:info.duration,
+                  wav:pack.wav, sampleRate:pack.sampleRate,
+                  vec:ssVecFromPCM(info.pcm,info.sampleRate),
+                  ext:(f.name.split('.').pop()||'wav').toLowerCase() });
+      ok++;
+    }catch(e){ console.warn('音频解码失败',f.name,e); }
+  }
+  toast(ok?('已导入 '+ok+' 个音频文件并提取声纹特征'):'音频解码失败，请换 wav / mp3 / webm 文件',4000);
+}
+function saveTemplate(){
+  const avg=currentAvg(); if(!avg) return;
+  // WAV 样本优先，特征型样本（例如「未知声音」）直接送 7 维特征
+  const serverPayload = samplesPayload();
+  const sampleCount = TRAIN_SAMPLES.length;
+  // 合并自 sound-shape：每个样本各存一条 11 维指纹，匹配时取最近邻
+  const vecs = TRAIN_SAMPLES.map(s=> s.vec || vecFromFeat7(s.feat));
+  const sel=$('#trainTarget').value;
+  let t;
+  if(sel==='__new'){
+    const raw=$('#trainName').value.trim();
+    if(!raw){ toast('请给新模板起个名字'); $('#trainName').focus(); return; }
+    const rule = SSC ? SSC.SOUNDS.find(x=>x.name===raw) : null;
+    t={ id:'custom_'+Date.now(), name:raw, rec:fmtShort(new Date()).slice(0,11), count:0, custom:true,
+        bars:barsFromFeat(avg), prototype:avg, trained:true, samples:sampleCount,
+        vecs, cat:rule?rule.cat:'env', region:rule?rule.region:'door', icon:rule?rule.icon:'⭐',
+        ruleKey:rule?rule.key:null, hitCount:0, lastUsed:0, enabled:true };
+    TEMPLATES.push(t);
+  }else{
+    t=TEMPLATES.find(x=>x.id===sel); if(!t) return;
+    t.prototype=avg; t.trained=true; t.samples=sampleCount;
+    t.bars=barsFromFeat(avg); t.rec=fmtShort(new Date()).slice(0,11);
+    t.vecs=vecs; t.enabled=true;
+  }
+  const d=new Date();
+  state.samples += TRAIN_SAMPLES.length;
+  $('#statSamples').textContent=state.samples;
+  $('#statUpdated').textContent=pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  state.selected=t.id;
+  $('#nowTpl').textContent=t.name;
+  TRAIN_SAMPLES.length=0;
+  renderSamples(); renderCards(); renderLogs(); saveTrained();
+  closeTrain();
+  if(Backend.online && Backend.enabled){
+    toast('正在把 '+sampleCount+' 段样本上传到后端提取 MFCC…',3600);
+    Backend.train(t.name, serverPayload).then(res=>{
+      t.server=true; t.trained=true; t.serverSamples=res.samples||sampleCount;
+      if(Array.isArray(res.feature7)){
+        t.prototype=res.feature7.slice(0,7);
+        t.bars=barsFromFeat(t.prototype);
+      }
+      renderCards(); saveTrained(); Backend.syncTemplates(); Backend.syncHistory();
+      toast('后端训练完成：'+t.name+' · '+res.samples+' 段 · 一致性 '
+            +(res.consistency*100).toFixed(0)+'%',4800);
+    }).catch(e=>toast('后端训练失败，已保留本机模板：'+((e&&e.message)||e),4600));
+  }else{
+    toast('已保存声纹「'+t.name+'」· 现在对它发出声音即可命中',4200);
+  }
+}
+/* 当前训练目标名（去掉「· 已训练」后缀） */
+function currentTargetName(){
+  const sel=$('#trainTarget');
+  if(sel.value==='__new') return $('#trainName').value.trim() || '新模板';
+  const opt=sel.selectedOptions[0];
+  return (opt ? opt.text : '').replace(/\s*·\s*已训练$/,'').trim() || '未命名';
+}
+/* 训练/上传统一的样本载荷：WAV 优先，特征型样本退化为 7 维特征 */
+function samplesPayload(){
+  return TRAIN_SAMPLES.map(s=> s.wav
+    ? { wav:s.wav, sampleRate:s.sampleRate||16000 }
+    : { feature7:s.feat });
+}
+async function uploadSamples(){
+  if(!TRAIN_SAMPLES.length){ toast('先采集样本再上传'); return; }
+  const name=currentTargetName();
+
+  // ① 配置了外部上传端点（?upload=）→ 原样 POST 音频文件
+  if(UPLOAD_URL){
+    const fd=new FormData();
+    fd.append('name', name);
+    fd.append('features', JSON.stringify(currentAvg()));
+    TRAIN_SAMPLES.forEach((s,i)=>{
+      if(s.blob) fd.append('audio_'+i, s.blob, 'sample_'+i+'.'+(s.ext||'webm'));
+    });
+    try{
+      const res=await fetch(UPLOAD_URL,{method:'POST',body:fd});
+      toast(res.ok?'样本已上传到服务端 ✓':('上传失败：HTTP '+res.status),4000);
+    }catch(e){ toast('上传失败：'+((e&&e.message)||e),4200); }
+    return;
+  }
+
+  // ② 默认：后端在线就把样本真正上传到本机 /api/train 并更新 SQLite 模板
+  if(Backend.online){
+    toast('正在把 '+TRAIN_SAMPLES.length+' 段样本上传到本机后端…',3200);
+    try{
+      const res=await Backend.train(name, samplesPayload());
+      await Promise.all([Backend.syncTemplates(), Backend.syncHistory()]);
+      toast('已上传 '+res.samples+' 段样本到后端，声纹「'+name+'」已更新 · 一致性 '
+            +(res.consistency*100).toFixed(0)+'%',5000);
+    }catch(e){ toast('上传失败：'+((e&&e.message)||e),4200); }
+    return;
+  }
+
+  // ③ 完全离线：给可执行的下一步，而不是「未配置」死提示
+  toast('后端未启动：样本已在浏览器本地参与训练。双击 start_server.bat 后再点此按钮即可上传',5200);
+}
+$('#recBtn').addEventListener('click', recordSample);
+$('#fileBtn').addEventListener('click', ()=>$('#audioFiles').click());
+$('#audioFiles').addEventListener('change', e=>{ handleFiles(e.target.files); e.target.value=''; });
+$('#saveBtn').addEventListener('click', saveTemplate);
+$('#uploadBtn').addEventListener('click', uploadSamples);
+/* 听到「未知」→ 一键把它变成训练样本，形成完整闭环 */
+function adoptUnknown(openNew){
+  if(!lastUnknownFeat) return;
+  const f=lastUnknownFeat.slice();
+  lastUnknownFeat=null;
+  $('#teachBtn').hidden=true;
+  if(openNew) openTrain();
+  addSample({ name:'未知声音', feat:f,
+              envelope:new Array(48).fill(0).map((_,i)=>clamp(f[i%7]*.8,0,1)),
+              blob:null, duration:.6 });
+  if(openNew){
+    $('#trainTarget').value='__new';
+    $('#newNameField').hidden=false;
+    $('#trainName').focus();
+    toast('已把刚才的声音作为第 1 段样本，再录 2 段并命名保存',4600);
+  }else{
+    toast('已收录刚才的未知声音，再补几段录音会更稳',4200);
+  }
+}
+$('#teachBtn').addEventListener('click', ()=>adoptUnknown(true));
+$('#useUnknownBtn').addEventListener('click', ()=>adoptUnknown(false));
+$('#resetBtn').addEventListener('click', ()=>{
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  TEMPLATES=BASE_TEMPLATES.map(t=>({...t,prototype:t.prototype.slice(),bars:t.bars.slice(),trained:false,samples:0}));
+  state.selected='bell'; state.samples=20;
+  $('#nowTpl').textContent='门铃';
+  $('#statSamples').textContent='20'; $('#statUpdated').textContent='11-05';
+  TRAIN_SAMPLES.length=0;
+  refreshTargetOptions(); renderSamples(); renderCards(); renderLogs();
+  if(Backend.online){
+    Backend.reset().then(()=>{ Backend.syncTemplates(); Backend.syncHistory();
+      toast('已重置本机与后端模板库、识别历史'); }).catch(()=>{});
+  }else{
+    toast('已清空本机训练数据，恢复内置样例');
+  }
+});
+
+/* ==================== 后端对接：本机声纹服务 / aigent ==================== */
+const _qp = new URLSearchParams(location.search);
+function resolveBackendBase(){
+  if(_qp.get('api')) return _qp.get('api').replace(/\/$/,'');
+  if(location.protocol==='file:') return 'http://127.0.0.1:5000';
+  if(location.port==='5000') return location.origin;
+  // WorkBuddy 静态预览 / 其它端口：后端默认仍在本机 5000
+  return location.protocol + '//' + location.hostname + ':5000';
+}
+function bytesToBase64(bytes){
+  let s=''; const CH=0x8000;
+  for(let i=0;i<bytes.length;i+=CH) s += String.fromCharCode.apply(null, bytes.subarray(i,i+CH));
+  return btoa(s);
+}
+/* Float32 PCM → 16bit 单声道 WAV（训练与识别都按这个契约上传） */
+function encodeWAV(samples, sampleRate){
+  const n=samples.length, buf=new ArrayBuffer(44+n*2), v=new DataView(buf);
+  const wr=(o,str)=>{ for(let i=0;i<str.length;i++) v.setUint8(o+i,str.charCodeAt(i)); };
+  wr(0,'RIFF'); v.setUint32(4,36+n*2,true); wr(8,'WAVE'); wr(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sampleRate,true); v.setUint32(28,sampleRate*2,true);
+  v.setUint16(32,2,true); v.setUint16(34,16,true);
+  wr(36,'data'); v.setUint32(40,n*2,true);
+  let o=44;
+  for(let i=0;i<n;i++){
+    const x=clamp(samples[i],-1,1);
+    v.setInt16(o, x<0 ? x*0x8000 : x*0x7FFF, true); o+=2;
+  }
+  return new Uint8Array(buf);
+}
+/* 合并自 sound-shape：>20kHz 先抗混叠降到 16kHz，体积约 1/3 且匹配 ESP32 带宽 */
+function wavFromPCM(pcm, sr){
+  sr = sr || 16000;
+  const down = SSC && sr > 20000;
+  const bytes = down ? (SSC.encodeWav16k(pcm, sr, 16000) || encodeWAV(pcm, sr)) : encodeWAV(pcm, sr);
+  return { wav: bytesToBase64(bytes), sampleRate: down ? 16000 : sr };
+}
+function pcmToWavBase64(pcm, sr){ return wavFromPCM(pcm, sr).wav; }
+/* 训练库：从整段 PCM 提取 sound-shape 的 11 维指纹（多帧均值） */
+function ssVecFromPCM(pcm, sr){
+  if(!SSC || !pcm || pcm.length<2048) return null;
+  try{
+    const N=2048, hop=1024, rms=[];
+    for(let off=0; off+N<=pcm.length; off+=hop){
+      const w=pcm.subarray(off,off+N);
+      let s=0; for(let i=0;i<N;i++) s+=w[i]*w[i];
+      rms.push(Math.sqrt(s/N));
+    }
+    if(!rms.length) return null;
+    // 只取较响的帧（去掉静音/起始暂态），让指纹聚焦于「声音本身」，训练与实时同源
+    const cut=Math.max(1e-4, Math.max.apply(null,rms)*0.3);
+    const idx=rms.map((v,i)=>v>=cut?i:-1).filter(i=>i>=0);
+    const use=idx.length?idx:rms.map((_,i)=>i);
+    const an=new SSC.SSAnalyzer(sr,2048), sf=SSC.newSmooth();
+    use.forEach(i=>{ const off=i*hop; SSC.smooth(sf, an.process(pcm.subarray(off,off+N)), 20); });
+    return SSC.vecOfStable(sf);
+  }catch(e){ return null; }
+}
+/* 仅有 7 维特征时的近似 11 维映射，保证训练库始终有指纹 */
+function vecFromFeat7(f){
+  // 与 SSC.vecOfStable 同序：SC/SF/ZCR/low/mid/high/pitch/pitchConf/tonality/flux/spread
+  return [clamp(f[1]*2.67,0,1), .2, clamp(f[0]*1.25,0,1),
+          f[2], f[3], f[4], .1, .3, clamp(f[5],0,1), .1,
+          clamp(1-Math.max(f[2],f[3],f[4]),0,1)];
+}
+function collectRecentPCM(sec){
+  if(!MIC.ring || !MIC.ring.length) return new Float32Array(2048);
+  const sr = MIC.actx ? MIC.actx.sampleRate : 16000;
+  const want = Math.floor(sr*(sec||.7));
+  const parts=[]; let total=0;
+  for(let i=MIC.ring.length-1;i>=0 && total<want;i--){ parts.unshift(MIC.ring[i]); total+=MIC.ring[i].length; }
+  const out=new Float32Array(total); let off=0;
+  parts.forEach(p=>{ out.set(p,off); off+=p.length; });
+  return out.length ? out : new Float32Array(2048);
+}
+function confPct(c){ return clamp(c>1?c:c*100, 0, 99.5); }
+function concatPCM(chunks){
+  if(!chunks || !chunks.length) return new Float32Array(0);
+  const n=chunks.reduce((a,c)=>a+c.length,0), out=new Float32Array(n);
+  let off=0; chunks.forEach(c=>{ out.set(c,off); off+=c.length; });
+  return out;
+}
+
+/* 后端模板合并：同名并到一张卡片，新名字生成新卡片 */
+function mergeServerTemplates(list){
+  list.forEach(s=>{
+    if(!s || !s.name) return;
+    let t=TEMPLATES.find(x=>x.name===s.name);
+    if(!t){
+      t={ id:'srv_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), name:s.name,
+          rec:(s.updatedAt||'').slice(5,16)||fmtShort(new Date()).slice(0,11),
+          count:0, custom:true, server:true, trained:false, samples:0,
+          bars:[8,16,12,20,10], prototype:(s.feature7||new Array(7).fill(0)).slice(0,7),
+          vecs:[], cat:'env', region:'door', icon:'⭐', ruleKey:null,
+          hitCount:0, lastUsed:0, enabled:true };
+      TEMPLATES.push(t);
+    }
+    t.server=true; t.serverSamples=s.samples||0; t.serverSource=s.source;
+    if(Array.isArray(s.feature7) && s.feature7.length===7) t.prototype=s.feature7.slice();
+    if(s.source==='trained'){
+      t.trained=true; t.samples=s.samples||0;
+      if(s.updatedAt) t.rec=s.updatedAt.slice(5,16);
+    }
+  });
+  renderCards();
+}
+function templateByName(name){
+  let t=TEMPLATES.find(x=>x.name===name);
+  if(!t){
+    t={ id:'srv_'+Date.now(), name, rec:fmtShort(new Date()).slice(0,11), count:0,
+        custom:true, server:true, trained:false, samples:0,
+        bars:[8,16,12,20,10], prototype:new Array(7).fill(0) };
+    TEMPLATES.push(t);
+    renderCards();
+  }
+  return t;
+}
+function updateBeBadge(){
+  const el=$('#beBadge');
+  el.classList.toggle('online', Backend.online);
+  el.classList.toggle('off', !Backend.enabled);
+  $('#beText').textContent = !Backend.online ? '仅本地分析'
+    : (!Backend.enabled ? '后端已停用'
+       : (Backend.engine==='aigent' ? 'aigent 分析' : '后端已连接'));
+  el.title = Backend.online
+    ? '分析引擎：'+Backend.engine+' · 推送：'+(Backend.transport||'HTTP')+'\n点击切换 后端 / 仅本地'
+    : '未检测到本机服务，点击重试（python server.py）';
+  const es=$('#engineStatus');
+  if(es) es.innerHTML = Backend.online
+    ? '分析引擎：<b>'+esc(Backend.engine)+'</b> · 20 维特征（7 基础 + 13 MFCC）· 模板存 SQLite · 训练双写'
+    : '未连接后端 · 当前使用浏览器本地 7 维特征分析（仍可离线训练）';
+}
+
+const Backend = {
+  base: resolveBackendBase(),
+  online:false, enabled:true, engine:'—', transport:'HTTP',
+  ws:null, sse:null, lastEventId:null,
+  url(p){ return this.base + p; },
+  async get(path, ms){
+    const ctrl=new AbortController(); const timer=setTimeout(()=>ctrl.abort(), ms||6000);
+    try{
+      const r=await fetch(this.url(path),{signal:ctrl.signal});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return await r.json();
+    }finally{ clearTimeout(timer); }
+  },
+  async post(path, obj, ms){
+    const ctrl=new AbortController(); const timer=setTimeout(()=>ctrl.abort(), ms||15000);
+    try{
+      const r=await fetch(this.url(path),{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(obj), signal:ctrl.signal
+      });
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return await r.json();
+    }finally{ clearTimeout(timer); }
+  },
+  async init(){
+    try{
+      const d=await this.get('/api/health',1800);
+      this.online=!!d.ok; this.engine=d.engine||'local';
+    }catch(e){ this.online=false; this.engine='—'; }
+    updateBeBadge();
+    if(this.online){
+      this.connect();
+      await Promise.all([this.syncTemplates(), this.syncHistory(), this.syncSounds()]);
+    }
+  },
+  async syncSounds(){
+    try{
+      const d=await this.get('/api/sounds');
+      if(!d || !Array.isArray(d.sounds) || !d.sounds.length || !SSC) return;
+      SSC.SOUNDS.length=0; d.sounds.forEach(s=>SSC.SOUNDS.push(s));
+      Object.keys(SSC.SOUND_MAP).forEach(k=>delete SSC.SOUND_MAP[k]);
+      SSC.SOUNDS.forEach(s=>{ SSC.SOUND_MAP[s.key]=s; });
+      this.soundCount=d.sounds.length;
+      if(!$('#soundModal').hidden) renderSoundGrid();
+    }catch(e){}
+  },
+  connect(){
+    if(this.ws || typeof WebSocket==='undefined'){ this.fallbackSSE(); return; }
+    try{
+      const wsURL=(this.base.startsWith('https')?'wss':'ws')+'://'+this.base.split('://')[1]+'/ws';
+      const ws=new WebSocket(wsURL);
+      ws.onopen=()=>{ this.transport='WebSocket'; updateBeBadge(); };
+      ws.onmessage=e=>{ try{ this.onEvent(JSON.parse(e.data)); }catch(err){} };
+      ws.onerror=()=>{};
+      ws.onclose=()=>{ this.ws=null; this.fallbackSSE(); };
+      this.ws=ws;
+    }catch(e){ this.fallbackSSE(); }
+  },
+  fallbackSSE(){
+    if(this.sse || !this.online || typeof EventSource==='undefined') return;
+    try{
+      const es=new EventSource(this.url('/api/events'));
+      ['recognition','template_updated','reset','device','device_learned','device_deleted'].forEach(type=>{
+        es.addEventListener(type, e=>{ try{ this.onEvent(JSON.parse(e.data)); }catch(err){} });
+      });
+      es.onopen=()=>{ this.transport='SSE'; updateBeBadge(); };
+      es.onerror=()=>{ this.transport='HTTP'; updateBeBadge(); };
+      this.sse=es;
+    }catch(e){}
+  },
+  onEvent(ev){
+    if(ev.type==='recognition'){
+      this.lastEventId=ev.eventId;
+      // 自己的 microphone 识别已经在本地即时显示，不再用后端回传覆盖本地时间线
+      if(ev.source!=='mic'){
+        this.syncHistory();
+        let t = ev.unknown ? null : templateByName(ev.name);
+        // 硬件报上来的名字可能不在前端模板库里，现场造一张临时卡，
+        // 否则 applyHit 拿到 null，大屏什么都不显示。
+        if(!ev.unknown && !t && ev.source==='device'){
+          t = { id:'dev_'+ev.name, name:ev.name, count:0, cat:'env', region:'door',
+                bars:[8,16,12,20,10], prototype:new Array(7).fill(0),
+                hitCount:0, custom:true, fromDevice:true };
+        }
+        if(t && !state.busy){
+          state.busy=true;
+          applyHit(t, confPct(ev.confidence), ev.source==='device' ? 'device' : 'server', true);
+        }
+      }
+    }else if(ev.type==='device_learned'){
+      // 硬件录完一个声音，样本已经传上来
+      toast('硬件学会了「'+ev.name+'」· 样本已上传', 4200);
+      this.syncHistory();
+      if(typeof renderLogs==='function') renderLogs();
+    }else if(ev.type==='device'){
+      toast('硬件已连接 · '+(ev.templates||0)+' 个声纹模板', 4200);
+    }else if(ev.type==='template_updated' || ev.type==='reset'){
+      this.syncTemplates();
+    }
+  },
+  async syncTemplates(){
+    try{ const d=await this.get('/api/templates'); mergeServerTemplates(d.templates||[]); }catch(e){}
+  },
+  async syncHistory(){
+    try{
+      const d=await this.get('/api/history');
+      state.logs=(d.logs||[]).map(l=>({
+        name:l.name, time:l.time*1000, conf:l.confidence*100,
+        source:l.source, unknown:!!l.unknown
+      }));
+      state.total=d.total;
+      renderLogs();
+    }catch(e){}
+  },
+  analyze(wav, sampleRate, dryRun){
+    return this.post('/api/analyze',{wav,sampleRate,source:'mic',dryRun:!!dryRun},15000);
+  },
+  train(name, samples){ return this.post('/api/train',{name,samples},30000); },
+  reset(){ return this.post('/api/reset',{},10000); }
+};
+
+$('#beBadge').addEventListener('click', async ()=>{
+  if(!Backend.online){ toast('正在重新连接本机后端…'); await Backend.init(); return; }
+  Backend.enabled=!Backend.enabled;
+  updateBeBadge();
+  toast(Backend.enabled?'已启用后端分析（FFT/MFCC + WebSocket 推送）':'已切换为仅本地分析');
+});
+$('#syncBtn').addEventListener('click', async ()=>{
+  if(!Backend.online){ toast('未连接后端'); return; }
+  await Backend.syncTemplates(); await Backend.syncHistory();
+  toast('已同步后端模板库与识别历史');
+});
+$('#selfTestBtn').addEventListener('click', async ()=>{
+  if(!Backend.online){ toast('未连接后端，请先运行 start_server.bat'); return; }
+  try{
+    // 有采集样本就用真实样本自检（结果应与目标模板一致），否则用合成纯音只验证链路
+    const withWav = TRAIN_SAMPLES.filter(s=>s.wav);
+    let wav, sr, prefix;
+    if(withWav.length){
+      const s=withWav[withWav.length-1];
+      wav=s.wav; sr=s.sampleRate||16000;
+      prefix='样本自检（最后一段录音 / 文件）';
+    }else{
+      const r=await fetch(Backend.url('/api/demo.wav?hz=1000&kind=tone&dur=0.6'));
+      wav=bytesToBase64(new Uint8Array(await r.arrayBuffer())); sr=16000;
+      prefix='合成纯音自检（仅验证链路，不代表准确率）';
+    }
+    toast('正在跑 '+prefix+' …',3000);
+    const res=await Backend.analyze(wav,sr,true);   // dryRun：不写历史、不广播
+    const target=currentTargetName();
+    const ok = res.match && res.match===target;
+    toast(prefix+'：'+(res.match||'未知声音')+' · '+confPct(res.confidence).toFixed(1)
+          +'% · 引擎 '+res.engine+(ok?' · ✓ 与目标模板一致':' · 目标为「'+target+'」'),5200);
+  }catch(e){ toast('自检失败：'+((e&&e.message)||e),4200); }
+});
+
+/* ==================== 合并：声音库 / 灯带 / 调试面板 ==================== */
+const soundModal = $('#soundModal');
+function hexA(hex, a){
+  const h=hex.replace('#','');
+  const n=parseInt(h.length===3?h.split('').map(x=>x+x).join(''):h,16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+clamp(a,0,1)+')';
+}
+function renderSoundGrid(){
+  if(!SSC){ $('#soundGrid').innerHTML='<p class="sub">soundshape-core.js 未加载，请确认与本页同目录。</p>'; return; }
+  $('#soundGrid').innerHTML = SSC.SOUNDS.map(s=>{
+    const col=s.danger?'#FF5A5A':SSC.COLORS[s.cat];
+    return `<button class="sound-card${s.danger?' danger':''}" data-key="${esc(s.key)}" style="--sc:${col}">
+      <span class="sc-top"><span class="sc-icon">${s.icon}</span><span class="sc-name">${esc(s.name)}</span></span>
+      <span class="sc-meta">${esc(SSC.CAT_NAME[s.cat])} · ${esc(SSC.REGION_NAME[s.region])} · ${s.mode==='pulse'?'脉冲':'持续'}</span>
+      <span class="sc-desc">${esc(s.desc)}</span>
+      <span class="sc-cat">${esc(SSC.CAT_NAME[s.cat])}</span>
+    </button>`;
+  }).join('');
+  $$('#soundGrid .sound-card').forEach(b=>b.addEventListener('click',()=>presentSound(b.dataset.key)));
+}
+function presentSound(key){
+  const s=SSC && SSC.SOUND_MAP[key]; if(!s) return;
+  SS.play(key);
+  SS.show(s, 1);
+  toast('试听：'+s.name+' · '+SSC.CAT_NAME[s.cat]+' · '+SSC.REGION_NAME[s.region]+'（不计入识别历史）',2800);
+}
+function openSoundModal(){ renderSoundGrid(); soundModal.hidden=false; $('#soundClose').focus(); }
+function closeSoundModal(){ soundModal.hidden=true; $('#soundLibBtn').focus(); }
+$('#soundLibBtn').addEventListener('click', openSoundModal);
+$('#soundClose').addEventListener('click', closeSoundModal);
+soundModal.querySelector('[data-close]').addEventListener('click', closeSoundModal);
+
+/* 64 段灯带：位置=声源，颜色=类别，节奏=具体声音；任意一维看不清仍有其它两维 */
+function drawStrip(cv, now){
+  if(!cv) return;
+  const r=cv.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  const d=Math.min(window.devicePixelRatio||1,2);
+  const w=Math.round(r.width*d), h=Math.round(r.height*d);
+  if(cv.width!==w || cv.height!==h){ cv.width=w; cv.height=h; }
+  const c=cv.getContext('2d');
+  c.setTransform(d,0,0,d,0,0);
+  c.clearRect(0,0,r.width,r.height);
+  const st=SS.strip, age=st?(now-st.start):1e9;
+  const seg=r.width/64;
+  if(!st || age>2800){
+    const breath=.06+.05*Math.sin(now/700);
+    c.fillStyle=hexA('#5FE9B4',breath);
+    for(let i=0;i<64;i++) c.fillRect(i*seg+1,2,seg-2,r.height-4);
+    return;
+  }
+  const s=st.sound;
+  const color=s?(s.danger?'#FF5A5A':(SSC?SSC.COLORS[s.cat]:'#5FE9B4')):'#5FE9B4';
+  const range=s&&SSC?(SSC.REGIONS[s.region]||[0,63]):[0,63];
+  let pulse;
+  if(s && s.mode==='pulse' && Array.isArray(s.rhythm)){
+    const ph=age%1400; pulse=0;
+    s.rhythm.forEach(t=>{ const dd=Math.abs(ph-t); if(dd<150) pulse=Math.max(pulse,1-dd/150); });
+  }else if(st.custom){ pulse=.65+.35*Math.abs(Math.sin(age/200)); }
+  else{ pulse=.72+.28*Math.sin(age/420); }
+  for(let i=0;i<64;i++){
+    const on=i>=range[0] && i<=range[1];
+    c.fillStyle=hexA(color, on ? (.16+.82*pulse) : .045);
+    c.fillRect(i*seg+1,2,Math.max(1,seg-2),r.height-4);
+  }
+  if(pulse>.55 && s){
+    c.shadowBlur=12; c.shadowColor=color;
+    c.fillStyle=hexA(color,.35*pulse);
+    c.fillRect(range[0]*seg,0,(range[1]-range[0]+1)*seg,r.height);
+    c.shadowBlur=0;
+  }
+}
+const DBG_FIELDS=[['能量 dB','E',1],['信噪比','snr',1],['谱质心','SC',0],['谱平坦度','SF',2],
+  ['过零率','ZCR',3],['峰值 Hz','peakF',0],['低频','low',2],['中频','mid',2],
+  ['高频','high',2],['分散度','spread',2],['谱通量','flux',2],['基频 Hz','pitch',0],
+  ['稳态性','tonality',2],['持续 ms','dur',0]];
+let dbgTick=0;
+function renderDebug(now){
+  const box=$('#dbgGrid');
+  if(!box || soundModal.hidden) return;
+  if(now-dbgTick<200) return;
+  dbgTick=now;
+  const f=SS.f;
+  box.innerHTML=DBG_FIELDS.map(([label,key,dig])=>
+    '<div class="dbg-item"><span>'+label+'</span><b>'+(f?Number(f[key]||0).toFixed(dig):'—')+'</b></div>').join('');
+}
+
+/* ==================== Canvas 波形 ==================== */
+const cv = $('#wave'), ctx = cv.getContext('2d');
+let W=0, H=0, dpr=1, energy=.08, clock=0, last=0, rings=[];
+function readPal(){
+  const cs = getComputedStyle(document.body);
+  const g = n => cs.getPropertyValue(n).trim();
+  return {
+    w1:g('--wave-1'), w2:g('--wave-2'), w3:g('--wave-3'),
+    rgb:g('--halo-rgb'), mint:g('--mint')
+  };
+}
+let pal = readPal();
+function resize(){
+  const r = cv.getBoundingClientRect();
+  dpr = Math.min(window.devicePixelRatio||1, 2);
+  W = Math.max(1,r.width); H = Math.max(1,r.height);
+  cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+}
+if(window.ResizeObserver) new ResizeObserver(resize).observe(cv);
+window.addEventListener('resize', resize);
+resize();
+
+function draw(ts){
+  try{ drawFrame(ts); }
+  catch(e){
+    // 单帧异常（设备切换、分析器被释放等）绝不能打断 rAF 主循环，否则整块大屏会「假死」
+    if((draw.errs=(draw.errs||0)+1) < 4) console.warn('渲染帧异常（已隔离）：', e);
+  }
+  requestAnimationFrame(draw);
+}
+function drawFrame(ts){
+  const dt = Math.min(.05, (ts-last)/1000 || .016); last = ts; clock = ts;
+  const t = ts/1000;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  if(MIC.active){
+    readMicFrame();
+    micDetect(ts);
+    dbgHud();
+    energy += (clamp(MIC.rms*11,.02,1.25) - energy) * Math.min(1,dt*7);
+  }else{
+    energy += (.085 - energy) * Math.min(1, dt*2.3);
+  }
+
+  const baseY = H*.67;
+  const [r,g,b] = pal.rgb.split(',').map(Number);
+
+  // 呼吸光晕
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const breath = .5 + .5*Math.sin(t*.9);
+  const hr = Math.min(W,H) * (.30 + breath*.035 + energy*.20);
+  const halo = ctx.createRadialGradient(W/2,baseY,0,W/2,baseY,hr);
+  halo.addColorStop(0,   `rgba(${r},${g},${b},${.10 + energy*.20})`);
+  halo.addColorStop(.42, `rgba(${r},${g},${b},${.045 + energy*.09})`);
+  halo.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(W/2,baseY,hr,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // 基准线
+  ctx.save();
+  ctx.setLineDash([2,9]);
+  ctx.strokeStyle = `rgba(${r},${g},${b},.20)`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W*.04,baseY); ctx.lineTo(W*.96,baseY); ctx.stroke();
+  ctx.restore();
+
+  // 三层波形
+  const layers = [
+    { c:pal.w1, a:.95, amp:1.00, f:.0072, sp: 1.55, lw:2.2, blur:22 },
+    { c:pal.w2, a:.58, amp:.66,  f:.0118, sp:-2.05, lw:1.7, blur:16 },
+    { c:pal.w3, a:.20, amp:.40,  f:.0192, sp: 2.90, lw:1.0, blur:8  },
+  ];
+  const ampBase = H*.072 + energy*H*.19;
+  ctx.save();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if(MIC.active && MIC.time){
+    /* 真实采样波形：主线 + 两层残影 */
+    const wave=MIC.time, N=wave.length, gain=H*.42*(1+energy*.45);
+    const vis=clamp(.12/(MIC.rms+.008),1,14);   // 自动增益：轻声也能看清波形
+    const drawReal=(scale,alpha,color,lw,blur,shift)=>{
+      ctx.beginPath();
+      for(let x=0;x<=W;x+=2){
+        const env=Math.pow(Math.sin(Math.PI*(x/W)),.55);
+        const idx=Math.min(N-1,Math.floor(x/W*N));
+        const y=baseY + wave[idx]*vis*gain*scale*env + shift*Math.sin(t*1.1+x*.008);
+        if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle=color; ctx.globalAlpha=alpha; ctx.lineWidth=lw;
+      ctx.shadowBlur=blur; ctx.shadowColor=color; ctx.stroke();
+    };
+    drawReal(1,   .95, pal.w1, 2.2+energy*.8, 20+energy*22, 0);
+    drawReal(.55, .40, pal.w2, 1.4,           12,            6);
+    drawReal(.28, .18, pal.w3, 1.0,           6,            -6);
+  }else{
+    layers.forEach((L,i)=>{
+      ctx.beginPath();
+      for(let x=0;x<=W;x+=2){
+        const env = Math.pow(Math.sin(Math.PI*(x/W)),.8);
+        const n = Math.sin(x*L.f + t*L.sp + i*1.7)*.62
+                + Math.sin(x*L.f*2.7 - t*L.sp*.72 + i*.8)*.28
+                + Math.sin(x*.0012 + t*.7)*.10;
+        const y = baseY + n*ampBase*L.amp*env;
+        if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle = L.c;
+      ctx.globalAlpha = L.a * (.72 + energy*.28);
+      ctx.lineWidth = L.lw + energy*.7;
+      ctx.shadowBlur = L.blur + energy*26;
+      ctx.shadowColor = L.c;
+      ctx.stroke();
+    });
+  }
+  ctx.restore();
+
+  // 命中扩散光环
+  rings = rings.filter(R => t - R.t0 < 1.5);
+  ctx.save();
+  rings.forEach(R=>{
+    const age = t - R.t0;
+    if(age < 0) return;
+    const p = age/1.5;
+    const rad = 20 + p*Math.min(W,H)*.85;
+    ctx.beginPath(); ctx.arc(W/2,baseY,rad,0,Math.PI*2);
+    ctx.strokeStyle = `rgba(${r},${g},${b},${(1-p)*.5})`;
+    ctx.lineWidth = 2.5*(1-p)+.4;
+    ctx.shadowBlur = 18; ctx.shadowColor = pal.mint;
+    ctx.stroke();
+  });
+  ctx.restore();
+
+  // 底部频谱条
+  const n = Math.max(30, Math.floor(W/24));
+  const bw = W/n;
+  ctx.save();
+  for(let i=0;i<n;i++){
+    let s;
+    if(MIC.active && MIC.freq){
+      const idx=Math.min(MIC.freq.length-1, Math.floor(Math.pow(i/n,1.7)*MIC.freq.length));
+      s=MIC.freq[idx]/255;
+    }else{
+      s = Math.abs(Math.sin(i*.73 + t*1.9))*.55 + Math.abs(Math.sin(i*.21 - t*.8))*.45;
+    }
+    const bh = (H*.022 + s*H*.10) * (.55 + energy*.9);
+    const x = i*bw + bw*.28;
+    ctx.fillStyle = `rgba(${r},${g},${b},${.10 + s*.20 + energy*.14})`;
+    ctx.fillRect(x, H-16-bh, Math.max(2,bw*.44), bh);
+  }
+  ctx.restore();
+
+  // 能量条
+  const pct = Math.min(100, Math.round(energy*100));
+  $('#meterFill').style.width = Math.max(6,pct) + '%';
+  $('#meterVal').textContent = pad(pct) + '%';
+
+  // 灯带 + 调试面板（合并自 sound-shape）
+  const wall = performance.now();
+  drawStrip($('#lightBar'), wall);
+  if(!soundModal.hidden) drawStrip($('#soundBar'), wall);
+  renderDebug(wall);
+}
+
+/* ==================== 启动 ==================== */
+loadTrained();
+renderCards();
+renderLogs();
+refreshTargetOptions();
+renderSamples();
+updateModeUI();
+$('#statSamples').textContent = state.samples;
+const _t = TEMPLATES.find(x=>x.id===state.selected);
+$('#nowTpl').textContent = _t ? _t.name : '门铃';
+// 支持 ?theme=light 直接以浅色投屏；?upload= 指定样本上传接口
+setTheme(new URLSearchParams(location.search).get('theme')==='light' ? 'light' : 'dark');
+requestAnimationFrame(()=>requestAnimationFrame(()=>document.body.classList.add('ready')));
+requestAnimationFrame(draw);
+// 探测本机后端：在线则建立 WebSocket/SSE、同步模板库与识别历史
+Backend.init();
+</script>
+</body>
+</html>

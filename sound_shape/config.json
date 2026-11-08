@@ -1,0 +1,8 @@
+{
+  "aigent": {
+    "url": "",
+    "token": "",
+    "mode": "feature",
+    "timeout": 3
+  }
+}
